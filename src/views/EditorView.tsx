@@ -65,22 +65,22 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
     <div className="max-w-3xl mx-auto animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-zinc-900">{card ? 'Edit Card' : 'Create New Card'}</h2>
-          <p className="text-zinc-500 text-sm">Fill in the details for your flashcard.</p>
+          <h2 className="text-2xl font-bold text-white">{card ? 'Edit Card' : 'Create New Card'}</h2>
+          <p className="text-slate-400 text-sm">Fill in the details for your flashcard.</p>
         </div>
         <button 
           onClick={onCancel} 
-          className="p-2 hover:bg-zinc-100 rounded-full transition-colors"
+          className="p-2 hover:bg-slate-800 rounded-full transition-colors"
           title="Close editor"
         >
-          <X size={24} className="text-zinc-400" />
+          <X size={24} className="text-slate-400" />
         </button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Category Section */}
         <div className="space-y-2">
-          <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Category</label>
+          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Category</label>
           <div className="relative">
             <input
               type="text"
@@ -88,7 +88,7 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               placeholder="e.g. Allgemeinbildung, NIN, Science..."
-              className="w-full p-4 bg-white border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-zinc-900 focus:border-transparent outline-none transition-all font-medium shadow-sm"
+              className="w-full p-4 bg-slate-800 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-medium shadow-sm text-white placeholder-slate-500"
             />
             <datalist id="categories-list">
               {categories.map(cat => (
@@ -99,23 +99,23 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
         </div>
 
         {/* Front Section */}
-        <div className="space-y-4 bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm">
+        <div className="space-y-4 bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-sm">
           <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Front Content</label>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Front Content</label>
             <textarea
               value={front}
               onChange={(e) => setFront(e.target.value)}
               placeholder="Enter question or prompt..."
-              className="w-full min-h-[100px] p-4 bg-zinc-50 border border-zinc-100 rounded-2xl focus:ring-2 focus:ring-zinc-900 focus:border-transparent outline-none transition-all resize-none font-medium text-lg"
+              className="w-full min-h-[100px] p-4 bg-slate-900 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all resize-none font-medium text-lg text-white placeholder-slate-500"
               required
             />
           </div>
           
           <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Front Image (Optional)</label>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Front Image (Optional)</label>
             <div className="flex items-center gap-4">
               {frontImage ? (
-                <div className="relative w-32 h-32 rounded-2xl overflow-hidden border border-zinc-200 group">
+                <div className="relative w-32 h-32 rounded-2xl overflow-hidden border border-slate-700 group">
                   <img src={frontImage} alt="Front preview" className="w-full h-full object-cover" />
                   <button 
                     type="button"
@@ -129,7 +129,7 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
                 <button
                   type="button"
                   onClick={() => frontInputRef.current?.click()}
-                  className="w-32 h-32 rounded-2xl border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center text-zinc-400 hover:border-zinc-400 hover:text-zinc-600 transition-all"
+                  className="w-32 h-32 rounded-2xl border-2 border-dashed border-slate-700 flex flex-col items-center justify-center text-slate-500 hover:border-slate-500 hover:text-slate-300 transition-all"
                 >
                   <ImageIcon size={24} />
                   <span className="text-[10px] font-bold mt-2">UPLOAD</span>
@@ -147,23 +147,23 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
         </div>
 
         {/* Back Section */}
-        <div className="space-y-4 bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm">
+        <div className="space-y-4 bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-sm">
           <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Back Content</label>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Back Content</label>
             <textarea
               value={back}
               onChange={(e) => setBack(e.target.value)}
               placeholder="Enter answer or explanation..."
-              className="w-full min-h-[100px] p-4 bg-zinc-50 border border-zinc-100 rounded-2xl focus:ring-2 focus:ring-zinc-900 focus:border-transparent outline-none transition-all resize-none font-medium text-lg"
+              className="w-full min-h-[100px] p-4 bg-slate-900 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all resize-none font-medium text-lg text-white placeholder-slate-500"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Back Image (Optional)</label>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Back Image (Optional)</label>
             <div className="flex items-center gap-4">
               {backImage ? (
-                <div className="relative w-32 h-32 rounded-2xl overflow-hidden border border-zinc-200 group">
+                <div className="relative w-32 h-32 rounded-2xl overflow-hidden border border-slate-700 group">
                   <img src={backImage} alt="Back preview" className="w-full h-full object-cover" />
                   <button 
                     type="button"
@@ -177,7 +177,7 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
                 <button
                   type="button"
                   onClick={() => backInputRef.current?.click()}
-                  className="w-32 h-32 rounded-2xl border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center text-zinc-400 hover:border-zinc-400 hover:text-zinc-600 transition-all"
+                  className="w-32 h-32 rounded-2xl border-2 border-dashed border-slate-700 flex flex-col items-center justify-center text-slate-500 hover:border-slate-500 hover:text-slate-300 transition-all"
                 >
                   <ImageIcon size={24} />
                   <span className="text-[10px] font-bold mt-2">UPLOAD</span>
@@ -195,21 +195,21 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center justify-between">
+          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center justify-between">
             <span className="flex items-center gap-2"><TagIcon size={14} /> Tags (comma separated)</span>
-            <span className="text-[10px] font-medium text-zinc-400">{currentTags.length} tags detected</span>
+            <span className="text-[10px] font-medium text-slate-500">{currentTags.length} tags detected</span>
           </label>
           <input
             type="text"
             value={tagsInput}
             onChange={(e) => setTagsInput(e.target.value)}
             placeholder="e.g. biology, exam-prep, chapter-1"
-            className="w-full p-4 bg-white border border-zinc-200 rounded-2xl focus:ring-2 focus:ring-zinc-900 focus:border-transparent outline-none transition-all font-medium shadow-sm"
+            className="w-full p-4 bg-slate-800 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-medium shadow-sm text-white placeholder-slate-500"
           />
           {currentTags.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
               {currentTags.map(tag => (
-                <span key={tag} className="px-2 py-1 bg-zinc-100 text-zinc-600 text-[10px] font-bold rounded-md uppercase tracking-wider">
+                <span key={tag} className="px-2 py-1 bg-slate-700 text-slate-300 text-[10px] font-bold rounded-md uppercase tracking-wider border border-slate-600">
                   #{tag}
                 </span>
               ))}
@@ -220,7 +220,7 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
         <div className="pt-4 flex gap-4">
           <button
             type="submit"
-            className="flex-1 bg-zinc-900 text-white py-4 rounded-2xl font-bold hover:bg-zinc-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-zinc-200 active:scale-[0.98]"
+            className="flex-1 bg-violet-600 text-white py-4 rounded-2xl font-bold hover:bg-violet-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-500/20 active:scale-[0.98]"
           >
             <Save size={20} />
             {card ? 'Update Card' : 'Save Card'}
@@ -228,7 +228,7 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
           <button
             type="button"
             onClick={onCancel}
-            className="px-8 py-4 bg-white border border-zinc-200 text-zinc-600 rounded-2xl font-bold hover:bg-zinc-50 transition-all active:scale-[0.98]"
+            className="px-8 py-4 bg-slate-800 border border-slate-700 text-slate-300 rounded-2xl font-bold hover:bg-slate-700 transition-all active:scale-[0.98]"
           >
             Cancel
           </button>

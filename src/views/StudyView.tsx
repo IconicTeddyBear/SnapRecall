@@ -91,21 +91,21 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
   if (!currentCard) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
-        <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center">
+        <div className="w-20 h-20 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center">
           <X size={40} />
         </div>
-        <h2 className="text-2xl font-bold text-zinc-900">No cards to study!</h2>
-        <p className="text-zinc-500 max-w-xs">You've completed all your reviews for this deck. Great job!</p>
+        <h2 className="text-2xl font-bold text-white">No cards to study!</h2>
+        <p className="text-slate-400 max-w-xs">You've completed all your reviews for this deck. Great job!</p>
         <div className="flex gap-4">
           <button 
             onClick={onFinish}
-            className="bg-zinc-100 text-zinc-900 px-8 py-3 rounded-2xl font-bold hover:bg-zinc-200 transition-all"
+            className="bg-slate-800 text-white px-8 py-3 rounded-2xl font-bold hover:bg-slate-700 transition-all border border-slate-700"
           >
             Back to Dashboard
           </button>
           <button 
             onClick={onAddCard}
-            className="bg-zinc-900 text-white px-8 py-3 rounded-2xl font-bold hover:bg-zinc-800 transition-all flex items-center gap-2"
+            className="bg-violet-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-violet-500 transition-all flex items-center gap-2 shadow-lg shadow-violet-500/20"
           >
             <Plus size={18} /> Add Cards
           </button>
@@ -120,25 +120,25 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
       <div className="w-full flex items-center justify-between px-4">
         <button 
           onClick={onFinish}
-          className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-400"
+          className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"
         >
           <X size={24} />
         </button>
         <div className="flex flex-col items-center">
-          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Session Progress</span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Session Progress</span>
           <div className="flex items-center gap-3 mt-1">
-            <div className="w-32 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+            <div className="w-32 h-1.5 bg-slate-800 rounded-full overflow-hidden">
               <div 
-                className="bg-zinc-900 h-full transition-all duration-500"
+                className="bg-violet-500 h-full transition-all duration-500"
                 style={{ width: `${((currentIndex + 1) / cards.length) * 100}%` }}
               />
             </div>
-            <span className="text-xs font-bold text-zinc-900">{currentIndex + 1} / {cards.length}</span>
+            <span className="text-xs font-bold text-slate-300">{currentIndex + 1} / {cards.length}</span>
           </div>
         </div>
         <button 
           onClick={onAddCard}
-          className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-400"
+          className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"
           title="Add new card to this deck"
         >
           <Plus size={24} />
@@ -150,7 +150,7 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
         <button 
           onClick={prevCard}
           disabled={currentIndex === 0}
-          className={`absolute left-0 p-3 rounded-full transition-all ${currentIndex === 0 ? 'opacity-0' : 'hover:bg-zinc-100 text-zinc-400'}`}
+          className={`absolute left-0 p-3 rounded-full transition-all ${currentIndex === 0 ? 'opacity-0' : 'hover:bg-slate-800 text-slate-500 hover:text-white'}`}
         >
           <ChevronLeft size={32} />
         </button>
@@ -186,7 +186,7 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
             
             <button 
               onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-2 text-zinc-400 hover:text-rose-500 transition-colors text-xs font-bold uppercase tracking-widest group"
+              className="flex items-center gap-2 text-slate-500 hover:text-rose-500 transition-colors text-xs font-bold uppercase tracking-widest group"
             >
               <Trash2 size={14} className="group-hover:scale-110 transition-transform" />
               Delete Card
@@ -197,7 +197,7 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
         <button 
           onClick={nextCard}
           disabled={currentIndex === cards.length - 1}
-          className={`absolute right-0 p-3 rounded-full transition-all ${currentIndex === cards.length - 1 ? 'opacity-0' : 'hover:bg-zinc-100 text-zinc-400'}`}
+          className={`absolute right-0 p-3 rounded-full transition-all ${currentIndex === cards.length - 1 ? 'opacity-0' : 'hover:bg-slate-800 text-slate-500 hover:text-white'}`}
         >
           <ChevronRight size={32} />
         </button>
@@ -210,20 +210,20 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-zinc-900/60 backdrop-blur-sm flex items-center justify-center p-6"
+            className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-6"
           >
             <motion.div 
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-6"
+              className="bg-slate-900 rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-6 border border-slate-800"
             >
-              <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto">
+              <div className="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mx-auto">
                 <AlertCircle size={32} />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-zinc-900">Delete this card?</h3>
-                <p className="text-zinc-500 mt-2">This action cannot be undone. All SRS progress for this card will be lost.</p>
+                <h3 className="text-xl font-bold text-white">Delete this card?</h3>
+                <p className="text-slate-400 mt-2">This action cannot be undone. All SRS progress for this card will be lost.</p>
               </div>
               <div className="flex gap-3">
                 <button 
@@ -234,7 +234,7 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
                 </button>
                 <button 
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="flex-1 bg-zinc-100 text-zinc-600 py-3 rounded-2xl font-bold hover:bg-zinc-200 transition-all active:scale-95"
+                  className="flex-1 bg-slate-800 text-slate-300 py-3 rounded-2xl font-bold hover:bg-slate-700 transition-all active:scale-95"
                 >
                   Cancel
                 </button>
@@ -253,7 +253,7 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="absolute bottom-0 bg-zinc-900 text-white px-6 py-3 rounded-2xl shadow-xl flex items-center gap-4 z-50"
+              className="absolute bottom-0 bg-slate-800 text-white px-6 py-3 rounded-2xl shadow-xl flex items-center gap-4 z-50 border border-slate-700"
             >
               <span className="text-sm font-medium">Card deleted</span>
               <button 
@@ -265,7 +265,7 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
               </button>
               <button 
                 onClick={() => setShowUndoToast(false)}
-                className="text-zinc-500 hover:text-white transition-colors"
+                className="text-slate-500 hover:text-white transition-colors"
               >
                 <X size={16} />
               </button>

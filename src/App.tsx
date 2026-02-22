@@ -25,6 +25,8 @@ export default function App() {
   const [editingCard, setEditingCard] = useState<Card | undefined>(undefined);
   const [editorContext, setEditorContext] = useState<{ tags?: string[], category?: string } | undefined>(undefined);
   const [studyMode, setStudyMode] = useState<'normal' | 'focus'>('normal');
+  const [studyQueue, setStudyQueue] = useState<Card[]>([]);
+  const [decksCategory, setDecksCategory] = useState<string | null>(null);
 
   useEffect(() => {
     const loadedCards = storageManager.getCards();
@@ -70,10 +72,76 @@ export default function App() {
     }
   }, []);
 
+  const prepareStudyQueue = (cardsToProcess: Card[], mode: 'normal' | 'focus') => {
+    let finalQueue = [...cardsToProcess];
+    
+    if (mode === 'focus') {
+      finalQueue = finalQueue.filter(c => (c.difficultyScore || 0) >= 4);
+    } else {
+      // Normal mode: Study ALL cards in the deck/category.
+      // Prioritize due cards by putting them first, but include everything.
+      const dueCards = deckUtils.getDueCards(finalQueue);
+      const notDueCards = finalQueue.filter(c => !dueCards.includes(c));
+      
+      // Shuffle both groups independently
+      const shuffledDue = deckUtils.getWeightedCards(dueCards);
+      const shuffledNotDue = deckUtils.getWeightedCards(notDueCards);
+      
+      // Combine: Due cards first, then the rest
+      finalQueue = [...shuffledDue, ...shuffledNotDue];
+    }
+    return finalQueue;
+  };
+
   const handleStudyDeck = (deckId: string, mode: 'normal' | 'focus' = 'normal') => {
     setActiveDeckId(deckId);
     setStudyMode(mode);
+    
+    const activeDeck = decks.find(d => d.id === deckId);
+    let cardsToStudy = deckId === 'default' 
+      ? cards
+      : cards.filter(c => activeDeck?.tags.some(t => c.tags.includes(t)));
+
+    const queue = prepareStudyQueue(cardsToStudy, mode);
+    setStudyQueue(queue);
     setCurrentView('study');
+  };
+
+  const handleStudyCategory = (category: string, mode: 'normal' | 'focus' = 'normal') => {
+    setActiveDeckId(null); // No specific deck ID for category study
+    setStudyMode(mode);
+    
+    const cardsToStudy = cards.filter(c => c.category === category);
+    const queue = prepareStudyQueue(cardsToStudy, mode);
+    
+    setStudyQueue(queue);
+    setCurrentView('study');
+  };
+
+  const handleCopyCard = (card: Card) => {
+    const newCard: Card = {
+      ...card,
+      id: crypto.randomUUID(),
+      repetition: 0,
+      interval: 0,
+      easiness: 2.5,
+      nextReviewDate: Date.now(),
+      difficultyScore: 3,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    
+    // Insert the new card directly after the original card
+    const index = cards.findIndex(c => c.id === card.id);
+    const newCards = [...cards];
+    if (index !== -1) {
+      newCards.splice(index + 1, 0, newCard);
+    } else {
+      newCards.push(newCard);
+    }
+    
+    setCards(newCards);
+    storageManager.saveCards(newCards);
   };
 
   const handleSmartStart = () => {
@@ -249,6 +317,47 @@ export default function App() {
     setCurrentView('decks'); // Go back to decks after saving
   };
 
+  const handleExportCards = () => {
+    const dataStr = JSON.stringify(cards, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `flashcards_export_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCSV = () => {
+    const headers = ['id', 'front', 'back', 'category', 'tags'];
+    const csvContent = [
+      headers.join(','),
+      ...cards.map(card => {
+        const tags = card.tags.join(';');
+        const escape = (str: string) => `"${(str || '').replace(/"/g, '""')}"`;
+        return [
+          card.id,
+          escape(card.front),
+          escape(card.back),
+          escape(card.category || ''),
+          escape(tags)
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `flashcards_export_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleCreateNew = (initialTags?: string[], initialCategory?: string) => {
     setEditingCard(undefined);
     setEditorContext({ tags: initialTags, category: initialCategory });
@@ -265,6 +374,9 @@ export default function App() {
             logs={logs}
             onStudyDeck={handleStudyDeck}
             onSmartStart={handleSmartStart}
+            onExport={handleExportCards}
+            onExportCSV={handleExportCSV}
+            onImport={handleImportCards}
           />
         );
       case 'decks':
@@ -273,11 +385,16 @@ export default function App() {
             cards={cards}
             decks={decks}
             onStudyDeck={handleStudyDeck}
+            onStudyCategory={handleStudyCategory}
             onCreateCard={handleCreateNew}
             onEditCard={(card) => {
               setEditingCard(card);
               setCurrentView('editor');
             }}
+            onCopyCard={handleCopyCard}
+            onDeleteCard={handleDeleteCard}
+            selectedCategory={decksCategory}
+            onSelectCategory={setDecksCategory}
           />
         );
       case 'analytics':
@@ -289,21 +406,9 @@ export default function App() {
         );
       case 'study':
         const activeDeck = decks.find(d => d.id === activeDeckId);
-        let sessionCards = activeDeckId === 'default' 
-          ? cards
-          : cards.filter(c => activeDeck?.tags.some(t => c.tags.includes(t)));
-
-        if (studyMode === 'focus') {
-          sessionCards = sessionCards.filter(c => (c.difficultyScore || 0) >= 4);
-        } else {
-          // Normal mode: Due cards + Weighted Shuffle
-          sessionCards = deckUtils.getDueCards(sessionCards);
-          sessionCards = deckUtils.getWeightedCards(sessionCards);
-        }
-
         return (
           <StudyView 
-            cards={sessionCards}
+            cards={studyQueue}
             onGrade={handleGradeCard}
             onDelete={handleDeleteCard}
             onUndo={handleUndoDelete}
@@ -339,34 +444,34 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 font-sans selection:bg-zinc-900 selection:text-white">
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-200 px-6 py-4">
+    <div className="min-h-screen bg-slate-950 text-white font-sans selection:bg-violet-500 selection:text-white">
+      <header className="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div 
             className="flex items-center gap-2 cursor-pointer" 
             onClick={() => setCurrentView('dashboard')}
           >
-            <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center shadow-lg shadow-violet-500/20">
               <div className="w-4 h-4 border-2 border-white rounded-sm" />
             </div>
-            <h1 className="text-lg font-bold tracking-tight text-zinc-900">Elite Flashcards</h1>
+            <h1 className="text-lg font-bold tracking-tight text-white">Elite Flashcards</h1>
           </div>
           <nav className="flex gap-6">
             <button 
               onClick={() => setCurrentView('dashboard')}
-              className={`text-sm font-bold transition-colors ${currentView === 'dashboard' ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'}`}
+              className={`text-sm font-bold transition-colors ${currentView === 'dashboard' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
             >
               Dashboard
             </button>
             <button 
               onClick={() => setCurrentView('decks')}
-              className={`text-sm font-bold transition-colors ${currentView === 'decks' ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'}`}
+              className={`text-sm font-bold transition-colors ${currentView === 'decks' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
             >
               Decks
             </button>
             <button 
               onClick={() => setCurrentView('analytics')}
-              className={`text-sm font-bold transition-colors ${currentView === 'analytics' ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'}`}
+              className={`text-sm font-bold transition-colors ${currentView === 'analytics' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
             >
               Analytics
             </button>
