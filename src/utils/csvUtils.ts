@@ -2,14 +2,17 @@ import { Card } from '../models/types';
 
 export const csvUtils = {
   generateCSV: (cards: Card[]): string => {
-    const header = 'front,back,tags,front_image,back_image\n';
+    const header = 'id,front,back,category,tags,front_image,back_image\n';
     const rows = cards.map(card => {
+      const id = card.id;
       const front = `"${card.front.replace(/"/g, '""')}"`;
       const back = `"${card.back.replace(/"/g, '""')}"`;
-      const tags = `"${card.tags.join(',').replace(/"/g, '""')}"`;
+      const category = `"${(card.category || '').replace(/"/g, '""')}"`;
+      // Use semicolon for tags to avoid conflict with comma separator
+      const tags = `"${card.tags.join(';').replace(/"/g, '""')}"`;
       const frontImage = `"${(card.frontImage || '').replace(/"/g, '""')}"`;
       const backImage = `"${(card.backImage || '').replace(/"/g, '""')}"`;
-      return `${front},${back},${tags},${frontImage},${backImage}`;
+      return `${id},${front},${back},${category},${tags},${frontImage},${backImage}`;
     }).join('\n');
     return header + rows;
   },
@@ -19,8 +22,10 @@ export const csvUtils = {
     if (lines.length < 2) return [];
 
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const idIdx = headers.indexOf('id');
     const frontIdx = headers.indexOf('front');
     const backIdx = headers.indexOf('back');
+    const categoryIdx = headers.indexOf('category');
     const tagsIdx = headers.indexOf('tags');
     const frontImgIdx = headers.indexOf('front_image');
     const backImgIdx = headers.indexOf('back_image');
@@ -59,17 +64,22 @@ export const csvUtils = {
       parts.push(currentPart.trim());
 
       if (parts.length >= 2) {
-        const tags = tagsIdx !== -1 && parts[tagsIdx] 
-          ? parts[tagsIdx].split(',').map(t => t.trim().toLowerCase()).filter(t => t !== '')
-          : [];
+        const tagsRaw = tagsIdx !== -1 && parts[tagsIdx] ? parts[tagsIdx] : '';
+        // Support both semicolon and comma for tags
+        const tags = tagsRaw.split(/[;,]/).map(t => t.trim()).filter(t => t !== '');
 
-        results.push({
+        const card: Partial<Card> = {
           front: parts[frontIdx] || '',
           back: parts[backIdx] || '',
           tags: tags,
-          frontImage: frontImgIdx !== -1 ? parts[frontImgIdx] : undefined,
-          backImage: backImgIdx !== -1 ? parts[backImgIdx] : undefined,
-        });
+        };
+
+        if (idIdx !== -1 && parts[idIdx]) card.id = parts[idIdx];
+        if (categoryIdx !== -1) card.category = parts[categoryIdx];
+        if (frontImgIdx !== -1) card.frontImage = parts[frontImgIdx];
+        if (backImgIdx !== -1) card.backImage = parts[backImgIdx];
+
+        results.push(card);
       }
     }
 

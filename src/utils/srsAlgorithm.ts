@@ -1,51 +1,61 @@
-import { Card } from '../models/types';
+import { Card, UserSettings } from '../models/types';
+import { FSRS, createEmptyCard, generatorParameters, Rating, Card as FSRSCard, State } from 'ts-fsrs';
 
-// Quality: 0-5
-// 0: Complete blackout
-// 1: Incorrect, but remembered upon seeing answer
-// 2: Incorrect, but seemed easy to recall
-// 3: Correct, but required significant effort
-// 4: Correct, after a hesitation
-// 5: Perfect response
+export function calculateNextReview(card: Card, quality: number, settings: UserSettings): { updatedCard: Card, log: any } {
+  const params = generatorParameters({ request_retention: settings.targetRetention || 0.90 });
+  const fsrs = new FSRS(params);
 
-export function calculateNextReview(card: Card, quality: number): Card {
-  let { repetition, interval, easiness } = card;
+  // Map quality (1-4) to FSRS Rating
+  // Assuming input quality is: 1=Again, 2=Hard, 3=Good, 4=Easy
+  let rating = Rating.Good;
+  if (quality === 1) rating = Rating.Again;
+  else if (quality === 2) rating = Rating.Hard;
+  else if (quality === 3) rating = Rating.Good;
+  else if (quality === 4) rating = Rating.Easy;
 
-  if (quality >= 3) {
-    if (repetition === 0) {
-      interval = 1;
-    } else if (repetition === 1) {
-      interval = 6;
-    } else {
-      interval = Math.round(interval * easiness);
-    }
-    repetition += 1;
+  // Reconstruct FSRS card from our Card model
+  let fsrsCard: FSRSCard;
+  if (card.due === undefined || card.state === undefined) {
+    // This is a new card or legacy SM-2 card
+    fsrsCard = createEmptyCard(new Date());
   } else {
-    repetition = 0;
-    interval = 1;
+    fsrsCard = {
+      due: new Date(card.due),
+      stability: card.stability,
+      difficulty: card.difficulty,
+      elapsed_days: card.elapsed_days,
+      scheduled_days: card.scheduled_days,
+      reps: card.reps,
+      lapses: card.lapses,
+      state: card.state as State,
+      last_review: card.last_review ? new Date(card.last_review) : undefined,
+    };
   }
 
-  easiness = easiness + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-  if (easiness < 1.3) easiness = 1.3;
+  const now = new Date();
+  const schedulingInfo = fsrs.repeat(fsrsCard, now);
+  const result = schedulingInfo[rating];
 
-  const nextReviewDate = Date.now() + interval * 24 * 60 * 60 * 1000;
+  const updatedFSRSCard = result.card;
+  const log = result.log;
 
-  // Update difficulty score (1-5)
-  // Hard (1) -> 5 (Very Hard)
-  // Good (3) -> 3 (Medium)
-  // Easy (5) -> 1 (Very Easy)
-  let difficultyScore = card.difficultyScore || 3;
-  if (quality <= 2) difficultyScore = 5;
-  else if (quality === 3) difficultyScore = 3;
-  else if (quality >= 4) difficultyScore = 1;
-
-  return {
+  const updatedCard: Card = {
     ...card,
-    repetition,
-    interval,
-    easiness,
-    nextReviewDate,
-    difficultyScore,
-    updatedAt: Date.now(),
+    due: updatedFSRSCard.due.getTime(),
+    stability: updatedFSRSCard.stability,
+    difficulty: updatedFSRSCard.difficulty,
+    elapsed_days: updatedFSRSCard.elapsed_days,
+    scheduled_days: updatedFSRSCard.scheduled_days,
+    reps: updatedFSRSCard.reps,
+    lapses: updatedFSRSCard.lapses,
+    state: updatedFSRSCard.state,
+    last_review: updatedFSRSCard.last_review?.getTime(),
+    updatedAt: now.getTime(),
+    
+    // Maintain legacy fields for compatibility if needed
+    difficultyScore: updatedFSRSCard.difficulty > 7 ? 5 : updatedFSRSCard.difficulty > 4 ? 3 : 1,
+    nextReviewDate: updatedFSRSCard.due.getTime(),
   };
+
+  return { updatedCard, log };
 }

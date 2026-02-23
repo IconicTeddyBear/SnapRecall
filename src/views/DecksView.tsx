@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Card, Deck } from '../models/types';
-import { ChevronRight, Folder, Tag, Play, BookOpen, Plus, Search, Zap, Copy, Trash2, AlertCircle } from 'lucide-react';
+import { ChevronRight, Folder, Tag, Play, BookOpen, Plus, Search, Zap, Copy, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface DecksViewProps {
@@ -16,20 +16,19 @@ interface DecksViewProps {
   onSelectCategory: (category: string | null) => void;
 }
 
-export const DecksView: React.FC<DecksViewProps> = ({
-  cards,
-  decks,
-  onStudyDeck,
-  onStudyCategory,
-  onCreateCard,
-  onEditCard,
-  onCopyCard,
+export const DecksView: React.FC<DecksViewProps> = ({ 
+  cards, 
+  decks, 
+  onStudyDeck, 
+  onStudyCategory, 
+  onCreateCard, 
+  onEditCard, 
+  onCopyCard, 
   onDeleteCard,
   selectedCategory,
   onSelectCategory
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [deleteConfirmCardId, setDeleteConfirmCardId] = useState<string | null>(null);
 
   const categories = useMemo(() => {
     const catMap = new Map<string, Set<string>>();
@@ -48,17 +47,14 @@ export const DecksView: React.FC<DecksViewProps> = ({
 
   const filteredCards = useMemo(() => {
     if (!searchQuery) return selectedCategoryCards;
-    return selectedCategoryCards.filter(card =>
+    return selectedCategoryCards.filter(card => 
       card.front.toLowerCase().includes(searchQuery.toLowerCase()) ||
       card.back.toLowerCase().includes(searchQuery.toLowerCase()) ||
       card.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   }, [selectedCategoryCards, searchQuery]);
 
-  const dueCardsCount = useMemo(() => {
-    const now = Date.now();
-    return cards.filter(c => c.nextReviewDate <= now).length;
-  }, [cards]);
+  const dueCardsCount = cards.filter(c => c.nextReviewDate <= Date.now()).length;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -67,7 +63,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
           <h2 className="text-2xl font-bold text-white">Library</h2>
           <p className="text-slate-400 text-sm">Browse your collection by category and tag.</p>
         </div>
-        <button
+        <button 
           onClick={() => onStudyDeck('default')}
           className="flex items-center gap-2 bg-violet-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-violet-500 transition-all shadow-lg shadow-violet-500/20 active:scale-95"
         >
@@ -89,8 +85,8 @@ export const DecksView: React.FC<DecksViewProps> = ({
                   setSearchQuery('');
                 }}
                 className={`flex items-center justify-between p-4 rounded-2xl border transition-all text-left w-full ${
-                  selectedCategory === cat
-                    ? 'bg-violet-600 border-violet-600 text-white shadow-lg shadow-violet-500/20'
+                  selectedCategory === cat 
+                    ? 'bg-violet-600 border-violet-600 text-white shadow-lg shadow-violet-500/20' 
                     : 'bg-slate-800 border-slate-700 text-slate-200 hover:border-slate-500 hover:bg-slate-700'
                 }`}
               >
@@ -113,7 +109,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
         <div className="lg:col-span-8 bg-slate-800 rounded-3xl border border-slate-700 shadow-sm overflow-hidden flex flex-col">
           <AnimatePresence mode="wait">
             {selectedCategory ? (
-              <motion.div
+              <motion.div 
                 key={selectedCategory}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -157,11 +153,11 @@ export const DecksView: React.FC<DecksViewProps> = ({
                       </button>
                     </div>
                   </div>
-
+                  
                   {/* Search */}
                   <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <input
+                    <input 
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -195,7 +191,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                                 {card.interval > 21 ? 'Mastered' : card.interval > 7 ? 'Learning' : 'New'}
                               </span>
                               <div className="flex gap-2 mt-2">
-                                <button
+                                <button 
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     onEditCard(card);
@@ -205,7 +201,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                                 >
                                   Edit
                                 </button>
-                                <button
+                                <button 
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     onCopyCard(card);
@@ -215,10 +211,12 @@ export const DecksView: React.FC<DecksViewProps> = ({
                                 >
                                   <Copy size={12} />
                                 </button>
-                                <button
+                                <button 
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setDeleteConfirmCardId(card.id);
+                                    if (window.confirm('Are you sure you want to delete this card?')) {
+                                      onDeleteCard(card.id);
+                                    }
                                   }}
                                   className="text-slate-500 hover:text-rose-400 transition-colors"
                                   title="Delete"
@@ -248,50 +246,6 @@ export const DecksView: React.FC<DecksViewProps> = ({
           </AnimatePresence>
         </div>
       </div>
-
-      {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {deleteConfirmCardId && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-6"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="bg-slate-900 rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-6 border border-slate-800"
-            >
-              <div className="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mx-auto">
-                <AlertCircle size={32} />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-white">Delete this card?</h3>
-                <p className="text-slate-400 mt-2">This action cannot be undone. All SRS progress for this card will be lost.</p>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    onDeleteCard(deleteConfirmCardId);
-                    setDeleteConfirmCardId(null);
-                  }}
-                  className="flex-1 bg-rose-500 text-white py-3 rounded-2xl font-bold hover:bg-rose-600 transition-all active:scale-95"
-                >
-                  Delete
-                </button>
-                <button
-                  onClick={() => setDeleteConfirmCardId(null)}
-                  className="flex-1 bg-slate-800 text-slate-300 py-3 rounded-2xl font-bold hover:bg-slate-700 transition-all active:scale-95"
-                >
-                  Cancel
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

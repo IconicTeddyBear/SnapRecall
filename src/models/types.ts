@@ -6,12 +6,25 @@ export interface Card {
   backImage?: string; // base64 or URL
   category?: string;
   tags: string[];
-  // SRS Data (SuperMemo-2 style)
-  repetition: number;
-  interval: number;
-  easiness: number;
-  nextReviewDate: number; // timestamp
-  difficultyScore: number; // 1-5, higher is harder
+  
+  // FSRS Data
+  due: number; // timestamp
+  stability: number;
+  difficulty: number;
+  elapsed_days: number;
+  scheduled_days: number;
+  reps: number;
+  lapses: number;
+  state: number;
+  last_review?: number; // timestamp
+
+  // Legacy SM-2 (kept for migration)
+  repetition?: number;
+  interval?: number;
+  easiness?: number;
+  nextReviewDate?: number;
+  difficultyScore?: number;
+
   createdAt: number;
   updatedAt: number;
 }
@@ -26,8 +39,14 @@ export interface Deck {
 export interface ReviewLog {
   id: string;
   cardId: string;
-  quality: number;
-  easiness: number;
-  interval: number;
+  quality: number; // FSRS Rating (1=Again, 2=Hard, 3=Good, 4=Easy)
+  elapsed_days: number;
+  scheduled_days: number;
+  review: number; // timestamp
+  state: number;
   timestamp: number;
+}
+
+export interface UserSettings {
+  targetRetention: number; // e.g. 0.90 for 90%
 }
