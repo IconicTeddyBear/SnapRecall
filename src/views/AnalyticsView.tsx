@@ -54,7 +54,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ cards, logs }) => 
         total
       };
     });
-  }, [logs]);
+  }, [activeLogs]);
 
   // 2. Heatmap Data (Last 12 weeks)
   const heatmapData = useMemo(() => {

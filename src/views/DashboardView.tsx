@@ -1,8 +1,10 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { Card, Deck, ReviewLog } from '../models/types';
 import { deckUtils } from '../utils/deckUtils';
+import { csvUtils } from '../utils/csvUtils';
 import { StatCard } from '../components/StatCard';
 import { Flame, BookOpen, CheckCircle2, Zap, Trophy, Download, Upload } from 'lucide-react';
+import { Toast } from '../App';
 
 interface DashboardViewProps {
   cards: Card[];
@@ -13,17 +15,19 @@ interface DashboardViewProps {
   onExport: () => void;
   onExportCSV: () => void;
   onImport: (data: Partial<Card>[]) => void;
+  showToast: (message: string, type?: Toast['type']) => void;
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ 
-  cards, 
-  decks, 
+export const DashboardView: React.FC<DashboardViewProps> = ({
+  cards,
+  decks,
   logs,
-  onStudyDeck, 
+  onStudyDeck,
   onSmartStart,
   onExport,
   onExportCSV,
-  onImport
+  onImport,
+  showToast
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -39,72 +43,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         const data = JSON.parse(content);
         if (Array.isArray(data)) {
           onImport(data);
+          showToast(`Imported ${data.length} cards`, 'success');
           return;
         }
-      } catch (error) {
+      } catch {
         // Not JSON, try CSV
       }
 
-      // CSV Parsing
+      // CSV Parsing using shared utility
       try {
-        const lines = content.split('\n');
-        if (lines.length < 2) throw new Error('Invalid CSV');
-        
-        const headers = lines[0].split(',').map(h => h.trim());
-        const cards: Partial<Card>[] = [];
-        
-        // Simple CSV parser (handles quotes)
-        const parseCSVLine = (line: string) => {
-          const result = [];
-          let current = '';
-          let inQuotes = false;
-          
-          for (let i = 0; i < line.length; i++) {
-            const char = line[i];
-            if (char === '"') {
-              if (inQuotes && line[i + 1] === '"') {
-                current += '"';
-                i++;
-              } else {
-                inQuotes = !inQuotes;
-              }
-            } else if (char === ',' && !inQuotes) {
-              result.push(current);
-              current = '';
-            } else {
-              current += char;
-            }
-          }
-          result.push(current);
-          return result;
-        };
-
-        for (let i = 1; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-          const values = parseCSVLine(line);
-          const card: any = {};
-          
-          headers.forEach((header, index) => {
-            if (header === 'tags') {
-              card[header] = values[index] ? values[index].split(';').map(t => t.trim()).filter(Boolean) : [];
-            } else {
-              card[header] = values[index];
-            }
-          });
-          
-          if (card.front && card.back) {
-            cards.push(card);
-          }
-        }
-        
-        if (cards.length > 0) {
-          onImport(cards);
+        const parsed = csvUtils.parseCSV(content);
+        if (parsed.length > 0) {
+          onImport(parsed);
+          showToast(`Imported ${parsed.length} cards from CSV`, 'success');
         } else {
-          alert('No valid cards found in CSV.');
+          showToast('No valid cards found in CSV.', 'error');
         }
-      } catch (error) {
-        alert('Error parsing file. Please ensure it is a valid JSON or CSV.');
+      } catch {
+        showToast('Error parsing file. Please ensure it is a valid JSON or CSV.', 'error');
       }
     };
     reader.readAsText(file);
@@ -112,15 +68,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const dueCards = deckUtils.getDueCards(cards);
-  const streak = deckUtils.getStreak(logs);
+  const dueCards = useMemo(() => deckUtils.getDueCards(cards), [cards]);
+  const streak = useMemo(() => deckUtils.getStreak(logs), [logs]);
 
   // Calculate mastery for each deck
-  const deckMasteryData = decks.map(deck => {
-    const deckCards = cards.filter(c => deck.tags.some(t => c.tags.includes(t)));
-    const mastery = deckUtils.getDeckMastery(deckCards);
-    return { ...deck, mastery, cardCount: deckCards.length };
-  }).filter(d => d.cardCount > 0); // Only show decks with cards
+  const deckMasteryData = useMemo(() => {
+    return decks.map(deck => {
+      const deckCards = deck.tags.length === 0
+        ? cards
+        : cards.filter(c => deck.tags.some(t => c.tags.includes(t)));
+      const mastery = deckUtils.getDeckMastery(deckCards);
+      return { ...deck, mastery, cardCount: deckCards.length };
+    }).filter(d => d.cardCount > 0);
+  }, [decks, cards]);
 
   const getMasteryColor = (score: number) => {
     if (score >= 80) return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
@@ -139,28 +99,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <p className="text-slate-400 mt-1">Ready to crush your goals today?</p>
           </div>
           <div className="flex gap-2">
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileChange} 
-              className="hidden" 
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
               accept=".json,.csv"
             />
-            <button 
+            <button
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-2 bg-slate-800 text-slate-200 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-700 transition-all border border-slate-700"
             >
               <Upload size={16} />
               Import
             </button>
-            <button 
+            <button
               onClick={onExport}
               className="flex items-center gap-2 bg-slate-800 text-slate-200 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-700 transition-all border border-slate-700"
             >
               <Download size={16} />
               JSON
             </button>
-            <button 
+            <button
               onClick={onExportCSV}
               className="flex items-center gap-2 bg-slate-800 text-slate-200 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-700 transition-all border border-slate-700"
             >
@@ -170,23 +130,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatCard 
-            label="Due Today" 
-            value={dueCards.length} 
-            icon={BookOpen} 
-            colorClass="bg-blue-500/10 text-blue-400 border border-blue-500/20" 
+          <StatCard
+            label="Due Today"
+            value={dueCards.length}
+            icon={BookOpen}
+            colorClass="bg-blue-500/10 text-blue-400 border border-blue-500/20"
           />
-          <StatCard 
-            label="Day Streak" 
-            value={streak} 
-            icon={Flame} 
-            colorClass="bg-orange-500/10 text-orange-400 border border-orange-500/20" 
+          <StatCard
+            label="Day Streak"
+            value={streak}
+            icon={Flame}
+            colorClass="bg-orange-500/10 text-orange-400 border border-orange-500/20"
           />
-          <StatCard 
-            label="Total Cards" 
-            value={cards.length} 
-            icon={CheckCircle2} 
-            colorClass="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+          <StatCard
+            label="Total Cards"
+            value={cards.length}
+            icon={CheckCircle2}
+            colorClass="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
           />
         </div>
       </section>
@@ -199,7 +159,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         >
           <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-indigo-600" />
           <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />
-          
+
           <div className="relative flex items-center justify-between">
             <div className="text-left space-y-2">
               <div className="flex items-center gap-2 text-violet-200 font-bold uppercase tracking-widest text-xs">
@@ -224,11 +184,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <Trophy size={20} className="text-slate-400" />
           <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Mastery Heatmap</h2>
         </div>
-        
+
         {deckMasteryData.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {deckMasteryData.map(deck => (
-              <div 
+              <div
                 key={deck.id}
                 onClick={() => onStudyDeck(deck.id)}
                 className={`aspect-square rounded-3xl p-6 flex flex-col justify-between cursor-pointer transition-transform hover:scale-105 shadow-sm hover:shadow-md ${getMasteryColor(deck.mastery)}`}
