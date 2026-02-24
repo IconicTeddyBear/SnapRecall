@@ -1,24 +1,52 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Smile, Meh, Frown } from 'lucide-react';
+import { Smile, Meh, Frown, RefreshCcw } from 'lucide-react';
+import Markdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 interface FlashcardProps {
   front: string;
   back: string;
   frontImage?: string;
   backImage?: string;
+  frontTranslation?: string;
+  backTranslation?: string;
+  showTranslation?: boolean;
   isFlipped: boolean;
   onFlip: () => void;
-  onGrade?: (quality: number) => void;
+  onGrade?: (quality: number) => void; // 1=Again, 2=Hard, 3=Good, 4=Easy
 }
 
-export const Flashcard: React.FC<FlashcardProps> = ({ front, back, frontImage, backImage, isFlipped, onFlip, onGrade }) => {
+export const Flashcard: React.FC<FlashcardProps> = ({ 
+  front, 
+  back, 
+  frontImage, 
+  backImage, 
+  frontTranslation,
+  backTranslation,
+  showTranslation,
+  isFlipped, 
+  onFlip, 
+  onGrade 
+}) => {
   const getFontSize = (text: string) => {
     if (text.length > 300) return 'text-sm';
     if (text.length > 150) return 'text-base';
     if (text.length > 80) return 'text-lg';
     return 'text-xl md:text-2xl';
   };
+
+  const renderContent = (text: string) => (
+    <div className={`markdown-body ${getFontSize(text)} font-medium text-white leading-relaxed text-left inline-block w-full max-w-full prose prose-invert prose-p:my-2 prose-headings:my-3 prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800`}>
+      <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+        {text}
+      </Markdown>
+    </div>
+  );
+
+  const displayFront = showTranslation && frontTranslation ? frontTranslation : front;
+  const displayBack = showTranslation && backTranslation ? backTranslation : back;
 
   return (
     <div 
@@ -32,7 +60,9 @@ export const Flashcard: React.FC<FlashcardProps> = ({ front, back, frontImage, b
         {/* Front Side */}
         <div className="absolute inset-0 w-full h-full backface-hidden bg-slate-800 rounded-3xl border-2 border-slate-700 shadow-xl flex flex-col overflow-hidden">
           <div className="flex-none pt-6 pb-2 text-center">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Question</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
+              {showTranslation && frontTranslation ? 'Question (Translated)' : 'Question'}
+            </span>
           </div>
           
           <div className="flex-1 overflow-y-auto px-8 py-2 text-center scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
@@ -43,9 +73,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({ front, back, frontImage, b
                 </div>
               )}
 
-              <p className={`${getFontSize(front)} font-bold text-white leading-tight whitespace-pre-wrap`}>
-                {front}
-              </p>
+              {renderContent(displayFront)}
             </div>
           </div>
 
@@ -57,34 +85,42 @@ export const Flashcard: React.FC<FlashcardProps> = ({ front, back, frontImage, b
         {/* Back Side */}
         <div className="absolute inset-0 w-full h-full backface-hidden bg-slate-900 rounded-3xl border-2 border-slate-800 shadow-xl flex flex-col overflow-hidden rotate-y-180">
           <div className="flex-none pt-6 pb-2 text-center">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Answer</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
+              {showTranslation && backTranslation ? 'Answer (Translated)' : 'Answer'}
+            </span>
           </div>
 
           <div className="flex-1 overflow-y-auto px-8 py-2 text-center scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent relative">
-             {/* Scroll Indicator Hint (only visible if content overflows, but hard to detect in pure CSS without JS. 
-                 Instead, we use a shadow gradient at the bottom if we can, or just rely on the scrollbar) */}
-            <div className="flex flex-col items-center justify-center min-h-full gap-6 pb-20">
+            <div className="flex flex-col items-center justify-center min-h-full gap-6 pb-24">
               {backImage && (
                 <div className="w-full max-h-[40%] flex justify-center flex-none">
                   <img src={backImage} alt="Back" className="max-w-full max-h-full object-contain rounded-xl shadow-sm border border-slate-800" />
                 </div>
               )}
 
-              <p className={`${getFontSize(back)} font-bold text-white leading-tight whitespace-pre-wrap`}>
-                {back}
-              </p>
+              {renderContent(displayBack)}
             </div>
           </div>
 
           {/* Grading Buttons - Fixed at bottom with solid background */}
           {onGrade && (
             <div className="absolute bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 p-4 z-10">
-              <div className="flex justify-center gap-4">
+              <div className="flex justify-center gap-2 sm:gap-4">
                 <button
                   onClick={(e) => { e.stopPropagation(); onGrade(1); }}
                   className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-slate-800 transition-colors group/btn min-w-[60px]"
                 >
                   <div className="p-2 bg-rose-500/10 text-rose-500 rounded-full group-hover/btn:bg-rose-500 group-hover/btn:text-white transition-colors border border-rose-500/20">
+                    <RefreshCcw size={20} />
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">Again</span>
+                </button>
+
+                <button
+                  onClick={(e) => { e.stopPropagation(); onGrade(2); }}
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-slate-800 transition-colors group/btn min-w-[60px]"
+                >
+                  <div className="p-2 bg-orange-500/10 text-orange-500 rounded-full group-hover/btn:bg-orange-500 group-hover/btn:text-white transition-colors border border-orange-500/20">
                     <Frown size={20} />
                   </div>
                   <span className="text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">Hard</span>
@@ -101,7 +137,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({ front, back, frontImage, b
                 </button>
 
                 <button
-                  onClick={(e) => { e.stopPropagation(); onGrade(5); }}
+                  onClick={(e) => { e.stopPropagation(); onGrade(4); }}
                   className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-slate-800 transition-colors group/btn min-w-[60px]"
                 >
                   <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-full group-hover/btn:bg-emerald-500 group-hover/btn:text-white transition-colors border border-emerald-500/20">

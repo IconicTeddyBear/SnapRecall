@@ -29,7 +29,7 @@ export function calculateNextReview(card: Card, quality: number, settings: UserS
       lapses: card.lapses,
       state: card.state as State,
       last_review: card.last_review ? new Date(card.last_review) : undefined,
-    };
+    } as FSRSCard;
   }
 
   const now = new Date();

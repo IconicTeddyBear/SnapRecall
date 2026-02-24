@@ -146,24 +146,31 @@ export const StorageProvider: React.FC<{ children: ReactNode }> = ({ children })
     
     for (const data of importedCards) {
       const newCard: Card = {
-        id: crypto.randomUUID(),
+        id: data.id || crypto.randomUUID(),
         front: data.front || '',
         back: data.back || '',
         category: data.category,
         tags: data.tags || [],
         frontImage: data.frontImage,
         backImage: data.backImage,
-        repetition: 0,
-        interval: 0,
-        easiness: 2.5,
-        nextReviewDate: now,
-        difficultyScore: 3,
-        createdAt: now,
-        updatedAt: now,
-        ...data, // Allow overwriting if full card data is provided
+        frontTranslation: data.frontTranslation,
+        backTranslation: data.backTranslation,
+        due: data.due || now,
+        stability: data.stability || 0,
+        difficulty: data.difficulty || 0,
+        elapsed_days: data.elapsed_days || 0,
+        scheduled_days: data.scheduled_days || 0,
+        reps: data.reps || 0,
+        lapses: data.lapses || 0,
+        state: data.state || 0,
+        repetition: data.repetition || 0,
+        interval: data.interval || 0,
+        easiness: data.easiness || 2.5,
+        nextReviewDate: data.nextReviewDate || now,
+        difficultyScore: data.difficultyScore || 3,
+        createdAt: data.createdAt || now,
+        updatedAt: data.updatedAt || now,
       };
-      // Ensure ID is unique if provided, otherwise generate new
-      if (!newCard.id) newCard.id = crypto.randomUUID();
       
       await dbService.saveCard(newCard);
       newCard.tags.forEach(t => allTags.add(t));

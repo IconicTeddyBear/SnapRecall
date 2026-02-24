@@ -177,9 +177,19 @@ export const DecksView: React.FC<DecksViewProps> = ({
                             <div className="flex-1 min-w-0">
                               <p className="font-bold text-slate-200 text-sm line-clamp-2 mb-1">{card.front}</p>
                               <div className="flex flex-wrap gap-1">
-                                {card.tags.map(tag => (
-                                  <span key={tag} className="text-[10px] font-bold text-slate-400 uppercase tracking-tight bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700">#{tag}</span>
-                                ))}
+                                {card.tags.map(tag => {
+                                  const parts = tag.split('::');
+                                  return (
+                                    <span key={tag} className="text-[10px] font-bold text-slate-400 uppercase tracking-tight bg-slate-900 px-1.5 py-0.5 rounded border border-slate-700 flex items-center gap-1">
+                                      {parts.map((part, idx) => (
+                                        <React.Fragment key={idx}>
+                                          {idx > 0 && <span className="text-slate-600">/</span>}
+                                          <span>{part}</span>
+                                        </React.Fragment>
+                                      ))}
+                                    </span>
+                                  );
+                                })}
                               </div>
                             </div>
                             <div className="flex flex-col items-end gap-1">

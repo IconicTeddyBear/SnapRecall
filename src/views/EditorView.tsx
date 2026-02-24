@@ -1,6 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { Card } from '../models/types';
-import { X, Save, Tag as TagIcon, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { X, Save, Tag as TagIcon, Image as ImageIcon, Trash2, Eye, Languages, Loader2 } from 'lucide-react';
+import Markdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import { translateCard } from '../utils/aiTranslator';
 
 interface EditorViewProps {
   card?: Card;
@@ -18,6 +22,10 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
   const [frontImage, setFrontImage] = useState(card?.frontImage || '');
   const [backImage, setBackImage] = useState(card?.backImage || '');
   const [tagsInput, setTagsInput] = useState(card?.tags.join(', ') || initialTags?.join(', ') || '');
+  const [showPreview, setShowPreview] = useState(false);
+  const [frontTranslation, setFrontTranslation] = useState(card?.frontTranslation || '');
+  const [backTranslation, setBackTranslation] = useState(card?.backTranslation || '');
+  const [isTranslating, setIsTranslating] = useState(false);
 
   const frontInputRef = useRef<HTMLInputElement>(null);
   const backInputRef = useRef<HTMLInputElement>(null);
@@ -33,6 +41,20 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
       else setBackImage(base64);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleTranslate = async () => {
+    if (!front && !back) return;
+    setIsTranslating(true);
+    try {
+      const { frontTranslation: ft, backTranslation: bt } = await translateCard(front, back);
+      setFrontTranslation(ft);
+      setBackTranslation(bt);
+    } catch (error) {
+      alert('Failed to translate card. Please try again.');
+    } finally {
+      setIsTranslating(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -51,6 +73,8 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
       category: category.trim() || undefined,
       frontImage,
       backImage,
+      frontTranslation: frontTranslation || undefined,
+      backTranslation: backTranslation || undefined,
       tags,
     });
   };
@@ -61,20 +85,37 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
       .filter(t => t !== '')
   ));
 
+  const renderPreview = (text: string) => (
+    <div className="markdown-body text-base font-medium text-white leading-relaxed text-left inline-block w-full max-w-full prose prose-invert prose-p:my-2 prose-headings:my-3 prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800 p-4 bg-slate-900 border border-slate-700 rounded-2xl min-h-[100px]">
+      <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+        {text || '*Empty*'}
+      </Markdown>
+    </div>
+  );
+
   return (
     <div className="max-w-3xl mx-auto animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h2 className="text-2xl font-bold text-white">{card ? 'Edit Card' : 'Create New Card'}</h2>
-          <p className="text-slate-400 text-sm">Fill in the details for your flashcard.</p>
+          <p className="text-slate-400 text-sm">Fill in the details for your flashcard. Supports Markdown and LaTeX.</p>
         </div>
-        <button 
-          onClick={onCancel} 
-          className="p-2 hover:bg-slate-800 rounded-full transition-colors"
-          title="Close editor"
-        >
-          <X size={24} className="text-slate-400" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setShowPreview(!showPreview)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${showPreview ? 'bg-violet-600/20 text-violet-400 border-violet-500/30' : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'}`}
+          >
+            <Eye size={16} />
+            Preview
+          </button>
+          <button 
+            onClick={onCancel} 
+            className="p-2 hover:bg-slate-800 rounded-full transition-colors"
+            title="Close editor"
+          >
+            <X size={24} className="text-slate-400" />
+          </button>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
@@ -102,13 +143,15 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
         <div className="space-y-4 bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-sm">
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Front Content</label>
-            <textarea
-              value={front}
-              onChange={(e) => setFront(e.target.value)}
-              placeholder="Enter question or prompt..."
-              className="w-full min-h-[100px] p-4 bg-slate-900 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all resize-none font-medium text-lg text-white placeholder-slate-500"
-              required
-            />
+            {showPreview ? renderPreview(front) : (
+              <textarea
+                value={front}
+                onChange={(e) => setFront(e.target.value)}
+                placeholder="Enter question or prompt... (Markdown & LaTeX supported)"
+                className="w-full min-h-[100px] p-4 bg-slate-900 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all resize-none font-medium text-lg text-white placeholder-slate-500"
+                required
+              />
+            )}
           </div>
           
           <div className="space-y-2">
@@ -150,13 +193,15 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
         <div className="space-y-4 bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-sm">
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Back Content</label>
-            <textarea
-              value={back}
-              onChange={(e) => setBack(e.target.value)}
-              placeholder="Enter answer or explanation..."
-              className="w-full min-h-[100px] p-4 bg-slate-900 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all resize-none font-medium text-lg text-white placeholder-slate-500"
-              required
-            />
+            {showPreview ? renderPreview(back) : (
+              <textarea
+                value={back}
+                onChange={(e) => setBack(e.target.value)}
+                placeholder="Enter answer or explanation... (Markdown & LaTeX supported)"
+                className="w-full min-h-[100px] p-4 bg-slate-900 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all resize-none font-medium text-lg text-white placeholder-slate-500"
+                required
+              />
+            )}
           </div>
 
           <div className="space-y-2">
@@ -194,6 +239,26 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
           </div>
         </div>
 
+        <div className="space-y-4 bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-sm">
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Translations (Optional)</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <textarea
+                value={frontTranslation}
+                onChange={(e) => setFrontTranslation(e.target.value)}
+                placeholder="Front translation..."
+                className="w-full min-h-[80px] p-4 bg-slate-900 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all resize-none font-medium text-sm text-white placeholder-slate-500"
+              />
+              <textarea
+                value={backTranslation}
+                onChange={(e) => setBackTranslation(e.target.value)}
+                placeholder="Back translation..."
+                className="w-full min-h-[80px] p-4 bg-slate-900 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all resize-none font-medium text-sm text-white placeholder-slate-500"
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-2">
           <label className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center justify-between">
             <span className="flex items-center gap-2"><TagIcon size={14} /> Tags (comma separated)</span>
@@ -217,7 +282,16 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
           )}
         </div>
 
-        <div className="pt-4 flex gap-4">
+        <div className="pt-4 flex flex-wrap gap-4">
+          <button
+            type="button"
+            onClick={handleTranslate}
+            disabled={isTranslating || (!front && !back)}
+            className="flex-1 md:flex-none bg-slate-700 text-white px-6 py-4 rounded-2xl font-bold hover:bg-slate-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isTranslating ? <Loader2 size={20} className="animate-spin" /> : <Languages size={20} />}
+            Auto-Translate
+          </button>
           <button
             type="submit"
             className="flex-1 bg-violet-600 text-white py-4 rounded-2xl font-bold hover:bg-violet-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-500/20 active:scale-[0.98]"

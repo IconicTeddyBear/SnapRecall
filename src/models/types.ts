@@ -4,6 +4,8 @@ export interface Card {
   back: string;
   frontImage?: string; // base64 or URL
   backImage?: string; // base64 or URL
+  frontTranslation?: string;
+  backTranslation?: string;
   category?: string;
   tags: string[];
   

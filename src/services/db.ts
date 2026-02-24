@@ -22,7 +22,7 @@ interface FlashcardsDB extends DBSchema {
   };
   meta: {
     key: string;
-    value: { version: number; lastRotation: number };
+    value: { key: string; version: number; lastRotation: number };
   };
   settings: {
     key: string;
@@ -223,7 +223,7 @@ export class DatabaseService {
       }
     }
     
-    await tx.objectStore('meta').put({ key: 'lastRotation', value: { version: DB_VERSION, lastRotation: Date.now() } });
+    await tx.objectStore('meta').put({ key: 'lastRotation', version: DB_VERSION, lastRotation: Date.now() });
     await tx.done;
   }
 

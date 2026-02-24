@@ -143,7 +143,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </section>
 
       {/* Smart Start */}
-      <section>
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <button
           onClick={onSmartStart}
           className="w-full group relative overflow-hidden bg-violet-600 text-white p-8 rounded-3xl shadow-xl hover:shadow-2xl hover:shadow-violet-500/20 transition-all active:scale-[0.99]"
@@ -158,12 +158,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Recommended for you
               </div>
               <h2 className="text-3xl font-bold">Start Focus Session</h2>
-              <p className="text-violet-100 max-w-md">
+              <p className="text-violet-100 max-w-md text-sm">
                 We've selected the best cards for you to review right now based on your retention and due dates.
               </p>
             </div>
-            <div className="hidden md:flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl group-hover:scale-110 transition-transform backdrop-blur-sm border border-white/10">
-              <Zap size={32} className="text-white" />
+          </div>
+        </button>
+
+        <button
+          onClick={() => {
+            const query = prompt("Enter custom query (e.g. 'tag:anatomy due:7d'):");
+            if (query) {
+              // We will handle this in App.tsx by passing a new prop or using an event
+              // For now, let's just dispatch a custom event that App.tsx can listen to, or add a prop.
+              // Since we can't easily add a prop without changing App.tsx, let's just use window.dispatchEvent
+              window.dispatchEvent(new CustomEvent('custom-study', { detail: query }));
+            }
+          }}
+          className="w-full group relative overflow-hidden bg-slate-800 text-white p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all active:scale-[0.99] border border-slate-700 hover:border-slate-600"
+        >
+          <div className="relative flex items-center justify-between">
+            <div className="text-left space-y-2">
+              <div className="flex items-center gap-2 text-slate-400 font-bold uppercase tracking-widest text-xs">
+                <BookOpen size={16} className="fill-current" />
+                Filtered Session
+              </div>
+              <h2 className="text-3xl font-bold text-slate-200">Custom Study</h2>
+              <p className="text-slate-400 max-w-md text-sm">
+                Create temporary decks based on complex queries like "tag:anatomy due:7d".
+              </p>
             </div>
           </div>
         </button>

@@ -5,15 +5,16 @@ import { EditorView } from './views/EditorView';
 import { StudyView } from './views/StudyView';
 import { DecksView } from './views/DecksView';
 import { AnalyticsView } from './views/AnalyticsView';
+import { SettingsView } from './views/SettingsView';
 import { calculateNextReview } from './utils/srsAlgorithm';
 import { deckUtils } from './utils/deckUtils';
 import { csvUtils } from './utils/csvUtils';
 import { StorageProvider, useStorage } from './contexts/StorageContext';
 
-type View = 'dashboard' | 'study' | 'editor' | 'decks' | 'analytics';
+type View = 'dashboard' | 'study' | 'editor' | 'decks' | 'analytics' | 'settings';
 
 function MainApp() {
-  const { cards, decks, logs, settings, loading, addCard, updateCard, deleteCard, addLog, importCards } = useStorage();
+  const { cards, decks, logs, settings, loading, addCard, updateCard, deleteCard, addLog, importCards, saveSettings } = useStorage();
   
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
@@ -94,6 +95,51 @@ function MainApp() {
     }
   };
 
+  React.useEffect(() => {
+    const handleCustomStudy = (e: Event) => {
+      const query = (e as CustomEvent).detail as string;
+      const terms = query.toLowerCase().split(' ');
+      
+      let filteredCards = cards;
+      
+      for (const term of terms) {
+        if (term.startsWith('tag:')) {
+          const tag = term.split(':')[1];
+          filteredCards = filteredCards.filter(c => c.tags.some(t => t.toLowerCase().includes(tag)));
+        } else if (term.startsWith('due:')) {
+          const daysStr = term.split(':')[1].replace('d', '');
+          const days = parseInt(daysStr, 10);
+          if (!isNaN(days)) {
+            const targetTime = Date.now() + days * 24 * 60 * 60 * 1000;
+            filteredCards = filteredCards.filter(c => (c.due || c.nextReviewDate || 0) <= targetTime);
+          }
+        } else if (term.startsWith('wrong:')) {
+          const daysStr = term.split(':')[1].replace('d', '');
+          const days = parseInt(daysStr, 10);
+          if (!isNaN(days)) {
+            const targetTime = Date.now() - days * 24 * 60 * 60 * 1000;
+            const wrongCardIds = new Set(
+              logs.filter(l => l.quality <= 2 && l.timestamp >= targetTime).map(l => l.cardId)
+            );
+            filteredCards = filteredCards.filter(c => wrongCardIds.has(c.id));
+          }
+        }
+      }
+
+      if (filteredCards.length > 0) {
+        setActiveDeckId(null);
+        setStudyMode('normal');
+        setStudyQueue(deckUtils.getWeightedCards(filteredCards));
+        setCurrentView('study');
+      } else {
+        alert("No cards found matching your query.");
+      }
+    };
+
+    window.addEventListener('custom-study', handleCustomStudy);
+    return () => window.removeEventListener('custom-study', handleCustomStudy);
+  }, [cards, logs]);
+
   const handleGradeCard = (card: Card, quality: number) => {
     const { updatedCard, log } = calculateNextReview(card, quality, settings);
     updateCard(updatedCard);
@@ -151,7 +197,19 @@ function MainApp() {
         front: cardData.front || '',
         back: cardData.back || '',
         category: cardData.category,
+        frontImage: cardData.frontImage,
+        backImage: cardData.backImage,
+        frontTranslation: cardData.frontTranslation,
+        backTranslation: cardData.backTranslation,
         tags: cardData.tags || [],
+        due: Date.now(),
+        stability: 0,
+        difficulty: 0,
+        elapsed_days: 0,
+        scheduled_days: 0,
+        reps: 0,
+        lapses: 0,
+        state: 0,
         repetition: 0,
         interval: 0,
         easiness: 2.5,
@@ -284,6 +342,13 @@ function MainApp() {
             }}
           />
         );
+      case 'settings':
+        return (
+          <SettingsView 
+            settings={settings}
+            onSave={saveSettings}
+          />
+        );
     }
   };
 
@@ -318,6 +383,12 @@ function MainApp() {
               className={`text-sm font-bold transition-colors ${currentView === 'analytics' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
             >
               Analytics
+            </button>
+            <button 
+              onClick={() => setCurrentView('settings')}
+              className={`text-sm font-bold transition-colors ${currentView === 'settings' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              Settings
             </button>
           </nav>
         </div>

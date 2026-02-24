@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'motion/react';
 import { Card } from '../models/types';
 import { Flashcard } from '../components/Flashcard';
-import { X, ChevronLeft, ChevronRight, Trash2, AlertCircle, Undo2, Plus } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Trash2, AlertCircle, Undo2, Plus, Languages } from 'lucide-react';
 
 interface StudyViewProps {
   cards: Card[];
@@ -19,6 +19,7 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
   const [direction, setDirection] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showUndoToast, setShowUndoToast] = useState(false);
+  const [showTranslation, setShowTranslation] = useState(false);
 
   const currentCard = cards[currentIndex];
 
@@ -136,13 +137,22 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
             <span className="text-xs font-bold text-slate-300">{currentIndex + 1} / {cards.length}</span>
           </div>
         </div>
-        <button 
-          onClick={onAddCard}
-          className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"
-          title="Add new card to this deck"
-        >
-          <Plus size={24} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setShowTranslation(!showTranslation)}
+            className={`p-2 rounded-full transition-colors ${showTranslation ? 'bg-violet-600/20 text-violet-400' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
+            title="Toggle Translation"
+          >
+            <Languages size={24} />
+          </button>
+          <button 
+            onClick={onAddCard}
+            className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"
+            title="Add new card to this deck"
+          >
+            <Plus size={24} />
+          </button>
+        </div>
       </div>
 
       {/* Card Area */}
@@ -179,6 +189,9 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
               back={currentCard.back} 
               frontImage={currentCard.frontImage}
               backImage={currentCard.backImage}
+              frontTranslation={currentCard.frontTranslation}
+              backTranslation={currentCard.backTranslation}
+              showTranslation={showTranslation}
               isFlipped={isFlipped}
               onFlip={() => setIsFlipped(!isFlipped)}
               onGrade={isFlipped ? handleGrade : undefined}
