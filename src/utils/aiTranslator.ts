@@ -1,10 +1,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-export async function translateCard(frontText: string, backText: string): Promise<{ frontTranslation: string; backTranslation: string }> {
+export async function translateCard(frontText: string, backText: string, targetLanguage: string = "English"): Promise<{ frontTranslation: string; backTranslation: string }> {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     
-    const prompt = `Translate the following flashcard content into English (if it is not English) or into the user's native language (if it is English). If it is already in English, translate it to Spanish or a suitable language. Just provide a good translation.
+    const prompt = `Translate the following flashcard content into ${targetLanguage}. If it is already in ${targetLanguage}, provide a slightly simplified or alternative ${targetLanguage} phrasing. Provide a good translation.
     
 Front: ${frontText}
 Back: ${backText}`;

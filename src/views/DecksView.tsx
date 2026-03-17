@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Card, Deck } from '../models/types';
-import { ChevronRight, Folder, Tag, Play, BookOpen, Plus, Search, Zap, Copy, Trash2 } from 'lucide-react';
+import { ChevronRight, Folder, Tag, Play, BookOpen, Plus, Search, Zap, Copy, Trash2, Languages, Loader2, Eye, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Flashcard } from '../components/Flashcard';
 
 interface DecksViewProps {
   cards: Card[];
@@ -14,6 +15,8 @@ interface DecksViewProps {
   onDeleteCard: (cardId: string) => void;
   selectedCategory: string | null;
   onSelectCategory: (category: string | null) => void;
+  onTranslateCategory?: (category: string) => void;
+  translatingCategory?: string | null;
 }
 
 export const DecksView: React.FC<DecksViewProps> = ({ 
@@ -26,9 +29,13 @@ export const DecksView: React.FC<DecksViewProps> = ({
   onCopyCard, 
   onDeleteCard,
   selectedCategory,
-  onSelectCategory
+  onSelectCategory,
+  onTranslateCategory,
+  translatingCategory
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [previewCard, setPreviewCard] = useState<Card | null>(null);
+  const [isPreviewFlipped, setIsPreviewFlipped] = useState(false);
 
   const categories = useMemo(() => {
     const catMap = new Map<string, Set<string>>();
@@ -135,6 +142,16 @@ export const DecksView: React.FC<DecksViewProps> = ({
                       </button>
                       <button
                         onClick={() => {
+                          if (selectedCategory && onTranslateCategory) onTranslateCategory(selectedCategory);
+                        }}
+                        disabled={translatingCategory === selectedCategory}
+                        className="flex items-center gap-2 bg-blue-500/10 text-blue-400 px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-500/20 transition-all border border-blue-500/20 disabled:opacity-50"
+                      >
+                        {translatingCategory === selectedCategory ? <Loader2 size={16} className="animate-spin" /> : <Languages size={16} />}
+                        Translate
+                      </button>
+                      <button
+                        onClick={() => {
                           if (selectedCategory) onStudyCategory(selectedCategory, 'focus');
                         }}
                         className="flex items-center gap-2 bg-rose-500/10 text-rose-400 px-4 py-2 rounded-xl text-xs font-bold hover:bg-rose-500/20 transition-all border border-rose-500/20"
@@ -204,6 +221,17 @@ export const DecksView: React.FC<DecksViewProps> = ({
                                 <button 
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    setPreviewCard(card);
+                                    setIsPreviewFlipped(false);
+                                  }}
+                                  className="text-[10px] font-bold text-slate-500 hover:text-white uppercase tracking-tight transition-colors"
+                                  title="Preview"
+                                >
+                                  Preview
+                                </button>
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     onEditCard(card);
                                   }}
                                   className="text-[10px] font-bold text-slate-500 hover:text-white uppercase tracking-tight transition-colors"
@@ -256,6 +284,40 @@ export const DecksView: React.FC<DecksViewProps> = ({
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Preview Modal */}
+      <AnimatePresence>
+        {previewCard && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-6"
+            onClick={() => setPreviewCard(null)}
+          >
+            <div className="relative w-full max-w-2xl" onClick={e => e.stopPropagation()}>
+              <button 
+                onClick={() => setPreviewCard(null)}
+                className="absolute -top-12 right-0 p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-full transition-colors z-10"
+              >
+                <X size={24} />
+              </button>
+              <div className="h-[60vh] min-h-[400px]">
+                <Flashcard 
+                  front={previewCard.front}
+                  back={previewCard.back}
+                  frontImage={previewCard.frontImage}
+                  backImage={previewCard.backImage}
+                  frontTranslation={previewCard.frontTranslation}
+                  backTranslation={previewCard.backTranslation}
+                  isFlipped={isPreviewFlipped}
+                  onFlip={() => setIsPreviewFlipped(!isPreviewFlipped)}
+                />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

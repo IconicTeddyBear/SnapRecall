@@ -1,9 +1,10 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Smile, Meh, Frown, RefreshCcw } from 'lucide-react';
+import { Smile, Meh, Frown, RefreshCcw, Sparkles } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import DOMPurify from 'dompurify';
 
 interface FlashcardProps {
   front: string;
@@ -15,7 +16,7 @@ interface FlashcardProps {
   showTranslation?: boolean;
   isFlipped: boolean;
   onFlip: () => void;
-  onGrade?: (quality: number) => void; // 1=Again, 2=Hard, 3=Good, 4=Easy
+  onGrade?: (quality: number) => void; // 1=Again, 2=Hard, 3=Neutral, 4=Good, 5=Easy
 }
 
 export const Flashcard: React.FC<FlashcardProps> = ({ 
@@ -31,19 +32,40 @@ export const Flashcard: React.FC<FlashcardProps> = ({
   onGrade 
 }) => {
   const getFontSize = (text: string) => {
-    if (text.length > 300) return 'text-sm';
-    if (text.length > 150) return 'text-base';
-    if (text.length > 80) return 'text-lg';
+    // Strip HTML tags for length calculation
+    const cleanText = text.replace(/<[^>]*>/g, '');
+    if (cleanText.length > 300) return 'text-sm';
+    if (cleanText.length > 150) return 'text-base';
+    if (cleanText.length > 80) return 'text-lg';
     return 'text-xl md:text-2xl';
   };
 
-  const renderContent = (text: string) => (
-    <div className={`markdown-body ${getFontSize(text)} font-medium text-white leading-relaxed text-left inline-block w-full max-w-full prose prose-invert prose-p:my-2 prose-headings:my-3 prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800`}>
-      <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-        {text}
-      </Markdown>
-    </div>
-  );
+  const isHtml = (text: string) => {
+    const trimmed = text.trim();
+    return trimmed.startsWith('<') && trimmed.endsWith('>');
+  };
+
+  const renderContent = (text: string) => {
+    const fontSize = getFontSize(text);
+    
+    if (isHtml(text)) {
+      const sanitizedHtml = DOMPurify.sanitize(text);
+      return (
+        <div 
+          className={`markdown-body ${fontSize} font-medium text-white leading-relaxed text-center inline-block w-full max-w-full prose prose-invert prose-p:text-center prose-headings:text-center prose-ul:text-center prose-ol:text-center prose-p:my-2 prose-headings:my-3 prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800`}
+          dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+        />
+      );
+    }
+
+    return (
+      <div className={`markdown-body ${fontSize} font-medium text-white leading-relaxed text-center inline-block w-full max-w-full prose prose-invert prose-p:text-center prose-headings:text-center prose-ul:text-center prose-ol:text-center prose-p:my-2 prose-headings:my-3 prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800`}>
+        <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+          {text}
+        </Markdown>
+      </div>
+    );
+  };
 
   const displayFront = showTranslation && frontTranslation ? frontTranslation : front;
   const displayBack = showTranslation && backTranslation ? backTranslation : back;
@@ -105,45 +127,55 @@ export const Flashcard: React.FC<FlashcardProps> = ({
           {/* Grading Buttons - Fixed at bottom with solid background */}
           {onGrade && (
             <div className="absolute bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 p-4 z-10">
-              <div className="flex justify-center gap-2 sm:gap-4">
+              <div className="flex justify-center gap-1 sm:gap-2">
                 <button
                   onClick={(e) => { e.stopPropagation(); onGrade(1); }}
-                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-slate-800 transition-colors group/btn min-w-[60px]"
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-slate-800 transition-colors group/btn min-w-[50px] sm:min-w-[60px]"
                 >
                   <div className="p-2 bg-rose-500/10 text-rose-500 rounded-full group-hover/btn:bg-rose-500 group-hover/btn:text-white transition-colors border border-rose-500/20">
-                    <RefreshCcw size={20} />
+                    <RefreshCcw size={18} />
                   </div>
-                  <span className="text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">Again</span>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">Again</span>
                 </button>
 
                 <button
                   onClick={(e) => { e.stopPropagation(); onGrade(2); }}
-                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-slate-800 transition-colors group/btn min-w-[60px]"
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-slate-800 transition-colors group/btn min-w-[50px] sm:min-w-[60px]"
                 >
                   <div className="p-2 bg-orange-500/10 text-orange-500 rounded-full group-hover/btn:bg-orange-500 group-hover/btn:text-white transition-colors border border-orange-500/20">
-                    <Frown size={20} />
+                    <Frown size={18} />
                   </div>
-                  <span className="text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">Hard</span>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">Hard</span>
                 </button>
 
                 <button
                   onClick={(e) => { e.stopPropagation(); onGrade(3); }}
-                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-slate-800 transition-colors group/btn min-w-[60px]"
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-slate-800 transition-colors group/btn min-w-[50px] sm:min-w-[60px]"
                 >
-                  <div className="p-2 bg-blue-500/10 text-blue-500 rounded-full group-hover/btn:bg-blue-500 group-hover/btn:text-white transition-colors border border-blue-500/20">
-                    <Meh size={20} />
+                  <div className="p-2 bg-amber-500/10 text-amber-500 rounded-full group-hover/btn:bg-amber-500 group-hover/btn:text-white transition-colors border border-amber-500/20">
+                    <Meh size={18} />
                   </div>
-                  <span className="text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">Good</span>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">Neutral</span>
                 </button>
 
                 <button
                   onClick={(e) => { e.stopPropagation(); onGrade(4); }}
-                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-slate-800 transition-colors group/btn min-w-[60px]"
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-slate-800 transition-colors group/btn min-w-[50px] sm:min-w-[60px]"
+                >
+                  <div className="p-2 bg-blue-500/10 text-blue-500 rounded-full group-hover/btn:bg-blue-500 group-hover/btn:text-white transition-colors border border-blue-500/20">
+                    <Smile size={18} />
+                  </div>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">Good</span>
+                </button>
+
+                <button
+                  onClick={(e) => { e.stopPropagation(); onGrade(5); }}
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-slate-800 transition-colors group/btn min-w-[50px] sm:min-w-[60px]"
                 >
                   <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-full group-hover/btn:bg-emerald-500 group-hover/btn:text-white transition-colors border border-emerald-500/20">
-                    <Smile size={20} />
+                    <Sparkles size={18} />
                   </div>
-                  <span className="text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">Easy</span>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">Easy</span>
                 </button>
               </div>
             </div>

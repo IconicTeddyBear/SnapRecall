@@ -5,6 +5,7 @@ import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { translateCard } from '../utils/aiTranslator';
+import DOMPurify from 'dompurify';
 
 interface EditorViewProps {
   card?: Card;
@@ -85,13 +86,30 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
       .filter(t => t !== '')
   ));
 
-  const renderPreview = (text: string) => (
-    <div className="markdown-body text-base font-medium text-white leading-relaxed text-left inline-block w-full max-w-full prose prose-invert prose-p:my-2 prose-headings:my-3 prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800 p-4 bg-slate-900 border border-slate-700 rounded-2xl min-h-[100px]">
-      <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-        {text || '*Empty*'}
-      </Markdown>
-    </div>
-  );
+  const renderPreview = (text: string) => {
+    const isHtml = (t: string) => {
+      const trimmed = t.trim();
+      return trimmed.startsWith('<') && trimmed.endsWith('>');
+    };
+
+    if (isHtml(text)) {
+      const sanitizedHtml = DOMPurify.sanitize(text);
+      return (
+        <div 
+          className="markdown-body text-base font-medium text-white leading-relaxed text-center inline-block w-full max-w-full prose prose-invert prose-p:my-2 prose-headings:my-3 prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800 p-4 bg-slate-900 border border-slate-700 rounded-2xl min-h-[100px]"
+          dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+        />
+      );
+    }
+
+    return (
+      <div className="markdown-body text-base font-medium text-white leading-relaxed text-center inline-block w-full max-w-full prose prose-invert prose-p:my-2 prose-headings:my-3 prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800 p-4 bg-slate-900 border border-slate-700 rounded-2xl min-h-[100px]">
+        <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+          {text || '*Empty*'}
+        </Markdown>
+      </div>
+    );
+  };
 
   return (
     <div className="max-w-3xl mx-auto animate-in slide-in-from-bottom-4 duration-500">
@@ -101,13 +119,6 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
           <p className="text-slate-400 text-sm">Fill in the details for your flashcard. Supports Markdown and LaTeX.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setShowPreview(!showPreview)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${showPreview ? 'bg-violet-600/20 text-violet-400 border-violet-500/30' : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'}`}
-          >
-            <Eye size={16} />
-            Preview
-          </button>
           <button 
             onClick={onCancel} 
             className="p-2 hover:bg-slate-800 rounded-full transition-colors"
@@ -147,9 +158,8 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
               <textarea
                 value={front}
                 onChange={(e) => setFront(e.target.value)}
-                placeholder="Enter question or prompt... (Markdown & LaTeX supported)"
-                className="w-full min-h-[100px] p-4 bg-slate-900 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all resize-none font-medium text-lg text-white placeholder-slate-500"
-                required
+                placeholder="Enter raw Markdown or LaTeX here..."
+                className="w-full min-h-[150px] p-4 bg-slate-900 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all resize-y font-mono text-sm text-white placeholder-slate-500"
               />
             )}
           </div>
@@ -197,9 +207,8 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
               <textarea
                 value={back}
                 onChange={(e) => setBack(e.target.value)}
-                placeholder="Enter answer or explanation... (Markdown & LaTeX supported)"
-                className="w-full min-h-[100px] p-4 bg-slate-900 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all resize-none font-medium text-lg text-white placeholder-slate-500"
-                required
+                placeholder="Enter raw Markdown or LaTeX here..."
+                className="w-full min-h-[150px] p-4 bg-slate-900 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all resize-y font-mono text-sm text-white placeholder-slate-500"
               />
             )}
           </div>
@@ -292,6 +301,16 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
             {isTranslating ? <Loader2 size={20} className="animate-spin" /> : <Languages size={20} />}
             Auto-Translate
           </button>
+          
+          <button
+            type="button"
+            onClick={() => setShowPreview(!showPreview)}
+            className={`flex-1 md:flex-none px-6 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 border ${showPreview ? 'bg-violet-600/20 text-violet-400 border-violet-500/30' : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'}`}
+          >
+            <Eye size={20} />
+            {showPreview ? 'Edit Raw' : 'Preview'}
+          </button>
+
           <button
             type="submit"
             className="flex-1 bg-violet-600 text-white py-4 rounded-2xl font-bold hover:bg-violet-500 transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-500/20 active:scale-[0.98]"

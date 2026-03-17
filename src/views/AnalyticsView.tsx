@@ -159,7 +159,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ cards, logs }) => 
       <div className="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-sm">
         <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">Retention Rate (%)</h3>
         <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <LineChart data={retentionData}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
               <XAxis 
@@ -235,7 +235,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ cards, logs }) => 
         <div className="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-sm">
           <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">SRS Distribution</h3>
           <div className="h-[200px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart data={distributionData}>
                 <XAxis 
                   dataKey="name" 

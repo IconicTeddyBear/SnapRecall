@@ -9,7 +9,9 @@ import { SettingsView } from './views/SettingsView';
 import { calculateNextReview } from './utils/srsAlgorithm';
 import { deckUtils } from './utils/deckUtils';
 import { csvUtils } from './utils/csvUtils';
+import { translateCard } from './utils/aiTranslator';
 import { StorageProvider, useStorage } from './contexts/StorageContext';
+import { SupabaseProvider } from './contexts/SupabaseContext';
 
 type View = 'dashboard' | 'study' | 'editor' | 'decks' | 'analytics' | 'settings';
 
@@ -93,6 +95,49 @@ function MainApp() {
     } else {
       alert("No decks available to study!");
     }
+  };
+
+  const [translatingCategory, setTranslatingCategory] = useState<string | null>(null);
+
+  const handleTranslateCategory = async (category: string) => {
+    if (translatingCategory) return;
+    
+    const cardsToTranslate = cards.filter(c => 
+      c.category === category && 
+      !c.frontTranslation && 
+      !c.backTranslation && 
+      (c.front || c.back)
+    );
+
+    if (cardsToTranslate.length === 0) {
+      alert("All cards in this category are already translated.");
+      return;
+    }
+
+    setTranslatingCategory(category);
+    let successCount = 0;
+
+    for (const card of cardsToTranslate) {
+      try {
+        const { frontTranslation, backTranslation } = await translateCard(card.front, card.back, settings.targetLanguage);
+        await updateCard({
+          ...card,
+          frontTranslation,
+          backTranslation,
+          updatedAt: Date.now()
+        });
+        successCount++;
+        // Wait to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      } catch (e) {
+        console.error("Auto-translate failed for card", card.id, e);
+        // Wait longer on error
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+    }
+    
+    setTranslatingCategory(null);
+    alert(`Translated ${successCount} out of ${cardsToTranslate.length} cards.`);
   };
 
   React.useEffect(() => {
@@ -297,6 +342,8 @@ function MainApp() {
             onDeleteCard={handleDeleteCard}
             selectedCategory={decksCategory}
             onSelectCategory={setDecksCategory}
+            onTranslateCategory={handleTranslateCategory}
+            translatingCategory={translatingCategory}
           />
         );
       case 'analytics':
@@ -314,6 +361,7 @@ function MainApp() {
             onGrade={handleGradeCard}
             onDelete={handleDeleteCard}
             onUndo={handleUndoDelete}
+            onUpdateCard={updateCard}
             onFinish={() => setCurrentView('dashboard')}
             onAddCard={() => {
               if (activeDeck && activeDeck.id !== 'default') {
@@ -363,7 +411,7 @@ function MainApp() {
             <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center shadow-lg shadow-violet-500/20">
               <div className="w-4 h-4 border-2 border-white rounded-sm" />
             </div>
-            <h1 className="text-lg font-bold tracking-tight text-white">Elite Flashcards</h1>
+            <h1 className="text-lg font-bold tracking-tight text-white">Snap Recall</h1>
           </div>
           <nav className="flex gap-6">
             <button 
@@ -403,8 +451,10 @@ function MainApp() {
 
 export default function App() {
   return (
-    <StorageProvider>
-      <MainApp />
-    </StorageProvider>
+    <SupabaseProvider>
+      <StorageProvider>
+        <MainApp />
+      </StorageProvider>
+    </SupabaseProvider>
   );
 }

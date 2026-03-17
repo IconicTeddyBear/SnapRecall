@@ -2,7 +2,7 @@ import { Card } from '../models/types';
 
 export const csvUtils = {
   generateCSV: (cards: Card[]): string => {
-    const header = 'id,front,back,category,tags,front_image,back_image\n';
+    const header = 'id,front,back,category,tags,front_image,back_image,front_translation,back_translation\n';
     const rows = cards.map(card => {
       const id = card.id;
       const front = `"${card.front.replace(/"/g, '""')}"`;
@@ -12,7 +12,9 @@ export const csvUtils = {
       const tags = `"${card.tags.join(';').replace(/"/g, '""')}"`;
       const frontImage = `"${(card.frontImage || '').replace(/"/g, '""')}"`;
       const backImage = `"${(card.backImage || '').replace(/"/g, '""')}"`;
-      return `${id},${front},${back},${category},${tags},${frontImage},${backImage}`;
+      const frontTranslation = `"${(card.frontTranslation || '').replace(/"/g, '""')}"`;
+      const backTranslation = `"${(card.backTranslation || '').replace(/"/g, '""')}"`;
+      return `${id},${front},${back},${category},${tags},${frontImage},${backImage},${frontTranslation},${backTranslation}`;
     }).join('\n');
     return header + rows;
   },
@@ -29,6 +31,8 @@ export const csvUtils = {
     const tagsIdx = headers.indexOf('tags');
     const frontImgIdx = headers.indexOf('front_image');
     const backImgIdx = headers.indexOf('back_image');
+    const frontTransIdx = headers.indexOf('front_translation');
+    const backTransIdx = headers.indexOf('back_translation');
 
     if (frontIdx === -1 || backIdx === -1) {
       throw new Error('CSV must have "front" and "back" columns.');
@@ -75,9 +79,11 @@ export const csvUtils = {
         };
 
         if (idIdx !== -1 && parts[idIdx]) card.id = parts[idIdx];
-        if (categoryIdx !== -1) card.category = parts[categoryIdx];
-        if (frontImgIdx !== -1) card.frontImage = parts[frontImgIdx];
-        if (backImgIdx !== -1) card.backImage = parts[backImgIdx];
+        if (categoryIdx !== -1 && parts[categoryIdx]) card.category = parts[categoryIdx];
+        if (frontImgIdx !== -1 && parts[frontImgIdx]) card.frontImage = parts[frontImgIdx];
+        if (backImgIdx !== -1 && parts[backImgIdx]) card.backImage = parts[backImgIdx];
+        if (frontTransIdx !== -1 && parts[frontTransIdx]) card.frontTranslation = parts[frontTransIdx];
+        if (backTransIdx !== -1 && parts[backTransIdx]) card.backTranslation = parts[backTransIdx];
 
         results.push(card);
       }

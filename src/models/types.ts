@@ -51,4 +51,6 @@ export interface ReviewLog {
 
 export interface UserSettings {
   targetRetention: number; // e.g. 0.90 for 90%
+  autoTranslate?: boolean;
+  targetLanguage?: string;
 }

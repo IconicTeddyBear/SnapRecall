@@ -2,24 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'motion/react';
 import { Card } from '../models/types';
 import { Flashcard } from '../components/Flashcard';
-import { X, ChevronLeft, ChevronRight, Trash2, AlertCircle, Undo2, Plus, Languages } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Trash2, AlertCircle, Undo2, Plus, Languages, Loader2 } from 'lucide-react';
+import { translateCard } from '../utils/aiTranslator';
 
 interface StudyViewProps {
   cards: Card[];
   onGrade: (card: Card, quality: number) => void;
   onDelete: (cardId: string) => void;
   onUndo: () => boolean;
+  onUpdateCard: (card: Card) => void;
   onFinish: () => void;
   onAddCard: () => void;
 }
 
-export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, onUndo, onFinish, onAddCard }) => {
+export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, onUndo, onUpdateCard, onFinish, onAddCard }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [direction, setDirection] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showUndoToast, setShowUndoToast] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
 
   const currentCard = cards[currentIndex];
 
@@ -140,10 +143,11 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
         <div className="flex items-center gap-2">
           <button 
             onClick={() => setShowTranslation(!showTranslation)}
-            className={`p-2 rounded-full transition-colors ${showTranslation ? 'bg-violet-600/20 text-violet-400' : 'hover:bg-slate-800 text-slate-400 hover:text-white'}`}
+            disabled={isTranslating}
+            className={`p-2 rounded-full transition-colors ${showTranslation ? 'bg-violet-600/20 text-violet-400' : 'hover:bg-slate-800 text-slate-400 hover:text-white'} ${isTranslating ? 'opacity-50 cursor-not-allowed' : ''}`}
             title="Toggle Translation"
           >
-            <Languages size={24} />
+            {isTranslating ? <Loader2 size={24} className="animate-spin" /> : <Languages size={24} />}
           </button>
           <button 
             onClick={onAddCard}
