@@ -61,7 +61,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
     );
   }, [selectedCategoryCards, searchQuery]);
 
-  const dueCardsCount = cards.filter(c => c.nextReviewDate <= Date.now()).length;
+  const dueCardsCount = cards.filter(c => (c.due || c.nextReviewDate || 0) <= Date.now()).length;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -129,7 +129,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                     <div>
                       <h3 className="text-xl font-bold text-white">{selectedCategory}</h3>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                        {selectedCategoryCards.length} Cards • {selectedCategoryCards.filter(c => c.nextReviewDate <= Date.now()).length} Due
+                        {selectedCategoryCards.length} Cards • {selectedCategoryCards.filter(c => (c.due || c.nextReviewDate || 0) <= Date.now()).length} Due
                       </p>
                     </div>
                     <div className="flex gap-2">

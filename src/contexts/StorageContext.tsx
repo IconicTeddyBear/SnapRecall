@@ -108,36 +108,45 @@ export const StorageProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const addCard = async (card: Card) => {
     await dbService.saveCard(card);
-    await ensureDecksForTags(card.tags);
-    await refreshData();
+    setCards(prev => [...prev, card]);
+    const decksUpdated = await ensureDecksForTags(card.tags);
+    if (decksUpdated) {
+      setDecks(await dbService.getDecks());
+    }
   };
 
   const updateCard = async (card: Card) => {
     await dbService.saveCard(card);
-    await ensureDecksForTags(card.tags);
-    await refreshData();
+    setCards(prev => prev.map(c => c.id === card.id ? card : c));
+    const decksUpdated = await ensureDecksForTags(card.tags);
+    if (decksUpdated) {
+      setDecks(await dbService.getDecks());
+    }
   };
 
   const deleteCard = async (id: string) => {
     await dbService.deleteCard(id);
-    await refreshData();
+    setCards(prev => prev.filter(c => c.id !== id));
   };
 
   const saveDeck = async (deck: Deck) => {
     await dbService.saveDeck(deck);
-    await refreshData();
+    setDecks(prev => {
+      const idx = prev.findIndex(d => d.id === deck.id);
+      return idx >= 0 ? prev.map(d => d.id === deck.id ? deck : d) : [...prev, deck];
+    });
   };
 
   const saveDecks = async (decksToSave: Deck[]) => {
     for (const deck of decksToSave) {
       await dbService.saveDeck(deck);
     }
-    await refreshData();
+    setDecks(await dbService.getDecks());
   };
 
   const addLog = async (log: ReviewLog) => {
     await dbService.addLog(log);
-    await refreshData();
+    setLogs(prev => [...prev, log]);
   };
 
   const importCards = async (importedCards: Partial<Card>[]) => {
@@ -182,7 +191,7 @@ export const StorageProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const saveSettings = async (newSettings: UserSettings) => {
     await dbService.saveSettings(newSettings);
-    await refreshData();
+    setSettings(newSettings);
   };
 
   return (

@@ -77,25 +77,7 @@ export const deckUtils = {
       [weightedPool[i], weightedPool[j]] = [weightedPool[j], weightedPool[i]];
     }
 
-    // Deduplicate while preserving order (first occurrence wins)? 
-    // Actually, "appear 2x more frequently" usually means they are in the queue twice.
-    // But for a flashcard session, usually you want to see unique cards, 
-    // but maybe the user wants to see them twice in one session?
-    // "higher difficulty scores should appear 2x more frequently than cards marked 'Easy'"
-    // This implies probability of being picked, OR frequency in a queue.
-    // If it's a "Study Session" of X cards, we usually pick X unique cards.
-    // If we want them to appear *sooner*, we should just sort/weight the pick.
-    // If we want them to appear *twice*, we leave duplicates.
-    // I'll assume we want unique cards but weighted probability of being picked if we are limiting the session size.
-    // BUT, if the session includes ALL due cards, then "frequency" might mean "order" or "repetition".
-    // Let's assume for now we just shuffle the due cards. 
-    // If the prompt implies "Focus Mode" filters, that's different.
-    // "In a regular study session... higher difficulty scores should appear 2x more frequently"
-    // This is ambiguous. I will interpret it as: They are twice as likely to be at the front of the queue?
-    // OR, if we are picking a subset, they are more likely to be picked.
-    // Let's just shuffle the array with duplicates, then deduplicate keeping the first occurrence.
-    // This effectively weights them towards the front.
-    
+    // Shuffle with duplicates then deduplicate — difficult cards are weighted towards the front
     const uniqueCards = new Set<string>();
     const result: Card[] = [];
     for (const card of weightedPool) {

@@ -1,7 +1,7 @@
 import { Card, UserSettings } from '../models/types';
-import { FSRS, createEmptyCard, generatorParameters, Rating, Card as FSRSCard, State } from 'ts-fsrs';
+import { FSRS, createEmptyCard, generatorParameters, Rating, Card as FSRSCard, State, ReviewLog as FSRSReviewLog } from 'ts-fsrs';
 
-export function calculateNextReview(card: Card, quality: number, settings: UserSettings): { updatedCard: Card, log: any } {
+export function calculateNextReview(card: Card, quality: number, settings: UserSettings): { updatedCard: Card, log: FSRSReviewLog } {
   const params = generatorParameters({ request_retention: settings.targetRetention || 0.90 });
   const fsrs = new FSRS(params);
 

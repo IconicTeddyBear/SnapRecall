@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { User } from '@supabase/supabase-js';
 
-export interface Deck {
+export interface SupabaseDeck {
   id: string;
   user_id: string;
   title: string;
@@ -10,7 +10,7 @@ export interface Deck {
   created_at: string;
 }
 
-export interface Card {
+export interface SupabaseCard {
   id: string;
   deck_id: string;
   user_id: string;
@@ -23,11 +23,11 @@ export interface Card {
 
 interface SupabaseContextType {
   user: User | null;
-  decks: Deck[];
-  cards: Card[];
+  decks: SupabaseDeck[];
+  cards: SupabaseCard[];
   loading: boolean;
-  addDeck: (title: string, description?: string) => Promise<Deck | null>;
-  addCard: (deck_id: string, front_content: string, back_content: string) => Promise<Card | null>;
+  addDeck: (title: string, description?: string) => Promise<SupabaseDeck | null>;
+  addCard: (deck_id: string, front_content: string, back_content: string) => Promise<SupabaseCard | null>;
   updateCardReview: (card_id: string, difficulty_level: number, next_review_date: string) => Promise<void>;
   deleteCard: (card_id: string) => Promise<void>;
   deleteDeck: (deck_id: string) => Promise<void>;
@@ -37,8 +37,8 @@ const SupabaseContext = createContext<SupabaseContextType | undefined>(undefined
 
 export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [decks, setDecks] = useState<Deck[]>([]);
-  const [cards, setCards] = useState<Card[]>([]);
+  const [decks, setDecks] = useState<SupabaseDeck[]>([]);
+  const [cards, setCards] = useState<SupabaseCard[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Auth state listener
@@ -88,9 +88,9 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .channel('public:cards')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cards', filter: `user_id=eq.${user.id}` }, (payload) => {
         if (payload.eventType === 'INSERT') {
-          setCards((prev) => [payload.new as Card, ...prev]);
+          setCards((prev) => [payload.new as SupabaseCard, ...prev]);
         } else if (payload.eventType === 'UPDATE') {
-          setCards((prev) => prev.map(c => c.id === payload.new.id ? (payload.new as Card) : c));
+          setCards((prev) => prev.map(c => c.id === payload.new.id ? (payload.new as SupabaseCard) : c));
         } else if (payload.eventType === 'DELETE') {
           setCards((prev) => prev.filter(c => c.id !== payload.old.id));
         }
@@ -110,9 +110,9 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .channel('public:decks')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'decks', filter: `user_id=eq.${user.id}` }, (payload) => {
         if (payload.eventType === 'INSERT') {
-          setDecks((prev) => [payload.new as Deck, ...prev]);
+          setDecks((prev) => [payload.new as SupabaseDeck, ...prev]);
         } else if (payload.eventType === 'UPDATE') {
-          setDecks((prev) => prev.map(d => d.id === payload.new.id ? (payload.new as Deck) : d));
+          setDecks((prev) => prev.map(d => d.id === payload.new.id ? (payload.new as SupabaseDeck) : d));
         } else if (payload.eventType === 'DELETE') {
           setDecks((prev) => prev.filter(d => d.id !== payload.old.id));
         }

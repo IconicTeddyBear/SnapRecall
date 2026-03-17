@@ -56,9 +56,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
       }
 
       alert('Data successfully synced to Supabase!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      alert('Failed to sync data to cloud: ' + error.message);
+      alert('Failed to sync data to cloud: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsSyncing(false);
     }
@@ -109,9 +109,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
       } else {
         alert('No cards found in cloud.');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      alert('Failed to fetch data from cloud: ' + error.message);
+      alert('Failed to fetch data from cloud: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsSyncing(false);
     }

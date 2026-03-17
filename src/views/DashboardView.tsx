@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { Card, Deck, ReviewLog } from '../models/types';
 import { deckUtils } from '../utils/deckUtils';
 import { csvUtils } from '../utils/csvUtils';
@@ -14,6 +14,7 @@ interface DashboardViewProps {
   onExport: () => void;
   onExportCSV: () => void;
   onImport: (data: Partial<Card>[]) => void;
+  onCustomStudy: (query: string) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ 
@@ -24,7 +25,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onSmartStart,
   onExport,
   onExportCSV,
-  onImport
+  onImport,
+  onCustomStudy
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -66,12 +68,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const dueCards = deckUtils.getDueCards(cards);
   const streak = deckUtils.getStreak(logs);
 
-  // Calculate mastery for each deck
-  const deckMasteryData = decks.map(deck => {
-    const deckCards = cards.filter(c => deck.tags.some(t => c.tags.includes(t)));
-    const mastery = deckUtils.getDeckMastery(deckCards);
-    return { ...deck, mastery, cardCount: deckCards.length };
-  }).filter(d => d.cardCount > 0); // Only show decks with cards
+  const deckMasteryData = useMemo(() =>
+    decks.map(deck => {
+      const deckCards = cards.filter(c => deck.tags.some(t => c.tags.includes(t)));
+      const mastery = deckUtils.getDeckMastery(deckCards);
+      return { ...deck, mastery, cardCount: deckCards.length };
+    }).filter(d => d.cardCount > 0),
+    [decks, cards]
+  );
 
   const getMasteryColor = (score: number) => {
     if (score >= 80) return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
@@ -169,10 +173,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           onClick={() => {
             const query = prompt("Enter custom query (e.g. 'tag:anatomy due:7d'):");
             if (query) {
-              // We will handle this in App.tsx by passing a new prop or using an event
-              // For now, let's just dispatch a custom event that App.tsx can listen to, or add a prop.
-              // Since we can't easily add a prop without changing App.tsx, let's just use window.dispatchEvent
-              window.dispatchEvent(new CustomEvent('custom-study', { detail: query }));
+              onCustomStudy(query);
             }
           }}
           className="w-full group relative overflow-hidden bg-slate-800 text-white p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all active:scale-[0.99] border border-slate-700 hover:border-slate-600"

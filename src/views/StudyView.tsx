@@ -27,7 +27,7 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
   const currentCard = cards[currentIndex];
 
   useEffect(() => {
-    let timer: any;
+    let timer: ReturnType<typeof setTimeout>;
     if (showUndoToast) {
       timer = setTimeout(() => setShowUndoToast(false), 5000);
     }
@@ -81,7 +81,7 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
     }
   };
 
-  const handleDragEnd = (event: any, info: PanInfo) => {
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const threshold = 100;
     const velocityThreshold = 500;
 
