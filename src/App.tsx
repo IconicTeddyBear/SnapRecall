@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, Deck, ReviewLog } from './models/types';
 import { DashboardView } from './views/DashboardView';
 import { EditorView } from './views/EditorView';
@@ -11,13 +11,35 @@ import { deckUtils } from './utils/deckUtils';
 import { csvUtils } from './utils/csvUtils';
 import { translateCard } from './utils/aiTranslator';
 import { StorageProvider, useStorage } from './contexts/StorageContext';
-import { SupabaseProvider } from './contexts/SupabaseContext';
+import { SupabaseProvider, useSupabase } from './contexts/SupabaseContext';
+import { supabase } from './services/supabaseClient';
 
 type View = 'dashboard' | 'study' | 'editor' | 'decks' | 'analytics' | 'settings';
 
 function MainApp() {
   const { cards, decks, logs, settings, loading, addCard, updateCard, deleteCard, addLog, importCards, saveSettings } = useStorage();
-  
+  const { user } = useSupabase();
+
+  // Toast notification when auth state changes
+  const [toast, setToast] = useState<string | null>(null);
+  const prevUserRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevUserRef.current;
+    const curr = user?.email ?? null;
+    if (prev === null && curr !== null) {
+      setToast(`Signed in as ${curr}`);
+    } else if (prev !== null && curr === null) {
+      setToast('Signed out');
+    }
+    prevUserRef.current = curr;
+  }, [user]);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [editingCard, setEditingCard] = useState<Card | undefined>(undefined);
@@ -407,10 +429,17 @@ function MainApp() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white font-sans selection:bg-violet-500 selection:text-white">
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm font-medium text-white shadow-xl animate-in fade-in slide-in-from-top-2 duration-300">
+          {toast}
+        </div>
+      )}
+
       <header className="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div 
-            className="flex items-center gap-2 cursor-pointer" 
+          <div
+            className="flex items-center gap-2 cursor-pointer"
             onClick={() => setCurrentView('dashboard')}
           >
             <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center shadow-lg shadow-violet-500/20">
@@ -418,32 +447,53 @@ function MainApp() {
             </div>
             <h1 className="text-lg font-bold tracking-tight text-white">Snap Recall</h1>
           </div>
-          <nav className="flex gap-6">
-            <button 
-              onClick={() => setCurrentView('dashboard')}
-              className={`text-sm font-bold transition-colors ${currentView === 'dashboard' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
-            >
-              Dashboard
-            </button>
-            <button 
-              onClick={() => setCurrentView('decks')}
-              className={`text-sm font-bold transition-colors ${currentView === 'decks' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
-            >
-              Decks
-            </button>
-            <button 
-              onClick={() => setCurrentView('analytics')}
-              className={`text-sm font-bold transition-colors ${currentView === 'analytics' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
-            >
-              Analytics
-            </button>
-            <button 
-              onClick={() => setCurrentView('settings')}
-              className={`text-sm font-bold transition-colors ${currentView === 'settings' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
-            >
-              Settings
-            </button>
-          </nav>
+          <div className="flex items-center gap-5">
+            <nav className="flex gap-6">
+              <button
+                onClick={() => setCurrentView('dashboard')}
+                className={`text-sm font-bold transition-colors ${currentView === 'dashboard' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => setCurrentView('decks')}
+                className={`text-sm font-bold transition-colors ${currentView === 'decks' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                Decks
+              </button>
+              <button
+                onClick={() => setCurrentView('analytics')}
+                className={`text-sm font-bold transition-colors ${currentView === 'analytics' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                Analytics
+              </button>
+              <button
+                onClick={() => setCurrentView('settings')}
+                className={`text-sm font-bold transition-colors ${currentView === 'settings' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
+              >
+                Settings
+              </button>
+            </nav>
+
+            {/* Auth indicator */}
+            {user ? (
+              <button
+                onClick={() => setCurrentView('settings')}
+                title={user.email ?? ''}
+                className="relative flex items-center justify-center w-8 h-8 rounded-full bg-violet-600 text-white text-xs font-bold hover:bg-violet-500 transition-colors flex-shrink-0"
+              >
+                {user.email?.[0].toUpperCase()}
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-slate-900 rounded-full" />
+              </button>
+            ) : (
+              <button
+                onClick={() => setCurrentView('settings')}
+                className="text-xs font-bold text-slate-400 hover:text-violet-400 transition-colors flex-shrink-0"
+              >
+                Sign In
+              </button>
+            )}
+          </div>
         </div>
       </header>
       
