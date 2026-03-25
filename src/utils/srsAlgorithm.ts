@@ -5,13 +5,13 @@ export function calculateNextReview(card: Card, quality: number, settings: UserS
   const params = generatorParameters({ request_retention: settings.targetRetention || 0.90 });
   const fsrs = new FSRS(params);
 
-  // Map quality (1-5) to FSRS Rating
-  // 1=Again, 2=Hard, 3=Neutral, 4=Good, 5=Easy
+  // Map quality (1-5) to FSRS Rating (FSRS has 4 ratings; Neutral maps to Hard)
+  // 1=Again, 2=Hard, 3=Neutral (recalled but uncertain → Hard), 4=Good, 5=Easy
   let rating = Rating.Good;
   if (quality === 1) rating = Rating.Again;
   else if (quality === 2) rating = Rating.Hard;
-  else if (quality === 3) rating = Rating.Good; // Map Neutral to Good
-  else if (quality === 4) rating = Rating.Good; // Map Good to Good
+  else if (quality === 3) rating = Rating.Hard;
+  else if (quality === 4) rating = Rating.Good;
   else if (quality === 5) rating = Rating.Easy;
 
   // Reconstruct FSRS card from our Card model

@@ -1,47 +1,19 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { User } from '@supabase/supabase-js';
-
-export interface Deck {
-  id: string;
-  user_id: string;
-  title: string;
-  description: string | null;
-  created_at: string;
-}
-
-export interface Card {
-  id: string;
-  deck_id: string;
-  user_id: string;
-  front_content: string;
-  back_content: string;
-  difficulty_level: number;
-  next_review_date: string;
-  created_at: string;
-}
+import { Card, Deck, ReviewLog, UserSettings } from '../models/types';
 
 interface SupabaseContextType {
   user: User | null;
-  decks: Deck[];
-  cards: Card[];
-  loading: boolean;
-  addDeck: (title: string, description?: string) => Promise<Deck | null>;
-  addCard: (deck_id: string, front_content: string, back_content: string) => Promise<Card | null>;
-  updateCardReview: (card_id: string, difficulty_level: number, next_review_date: string) => Promise<void>;
-  deleteCard: (card_id: string) => Promise<void>;
-  deleteDeck: (deck_id: string) => Promise<void>;
+  syncToCloud: (cards: Card[], decks: Deck[], logs: ReviewLog[], settings: UserSettings) => Promise<void>;
+  fetchFromCloud: () => Promise<{ cards: Card[]; decks: Deck[]; logs: ReviewLog[]; settings: UserSettings | null }>;
 }
 
 const SupabaseContext = createContext<SupabaseContextType | undefined>(undefined);
 
 export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [decks, setDecks] = useState<Deck[]>([]);
-  const [cards, setCards] = useState<Card[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  // Auth state listener
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -54,143 +26,170 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch initial data when user logs in
-  useEffect(() => {
-    if (!user) {
-      setDecks([]);
-      setCards([]);
-      setLoading(false);
-      return;
+  const syncToCloud = async (cards: Card[], decks: Deck[], logs: ReviewLog[], settings: UserSettings) => {
+    if (!user) throw new Error('Not signed in');
+
+    // Upsert decks
+    if (decks.length > 0) {
+      const { error } = await supabase.from('decks').upsert(
+        decks.map(d => ({
+          id: d.id,
+          user_id: user.id,
+          name: d.name,
+          tags: d.tags,
+          created_at: d.createdAt,
+        }))
+      );
+      if (error) throw error;
     }
 
-    const fetchData = async () => {
-      setLoading(true);
-      
-      const [decksResponse, cardsResponse] = await Promise.all([
-        supabase.from('decks').select('*').order('created_at', { ascending: false }),
-        supabase.from('cards').select('*').order('created_at', { ascending: false })
-      ]);
-
-      if (decksResponse.data) setDecks(decksResponse.data);
-      if (cardsResponse.data) setCards(cardsResponse.data);
-      
-      setLoading(false);
-    };
-
-    fetchData();
-  }, [user]);
-
-  // Realtime subscription for cards
-  useEffect(() => {
-    if (!user) return;
-
-    const channel = supabase
-      .channel('public:cards')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cards', filter: `user_id=eq.${user.id}` }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setCards((prev) => [payload.new as Card, ...prev]);
-        } else if (payload.eventType === 'UPDATE') {
-          setCards((prev) => prev.map(c => c.id === payload.new.id ? (payload.new as Card) : c));
-        } else if (payload.eventType === 'DELETE') {
-          setCards((prev) => prev.filter(c => c.id !== payload.old.id));
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
-
-  // Realtime subscription for decks
-  useEffect(() => {
-    if (!user) return;
-
-    const channel = supabase
-      .channel('public:decks')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'decks', filter: `user_id=eq.${user.id}` }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setDecks((prev) => [payload.new as Deck, ...prev]);
-        } else if (payload.eventType === 'UPDATE') {
-          setDecks((prev) => prev.map(d => d.id === payload.new.id ? (payload.new as Deck) : d));
-        } else if (payload.eventType === 'DELETE') {
-          setDecks((prev) => prev.filter(d => d.id !== payload.old.id));
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
-
-  // Actions
-  const addDeck = async (title: string, description?: string) => {
-    if (!user) return null;
-    const { data, error } = await supabase
-      .from('decks')
-      .insert([{ user_id: user.id, title, description }])
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Error adding deck:', error);
-      return null;
+    // Upsert cards in batches of 100
+    for (let i = 0; i < cards.length; i += 100) {
+      const batch = cards.slice(i, i + 100);
+      const { error } = await supabase.from('cards').upsert(
+        batch.map(c => ({
+          id: c.id,
+          user_id: user.id,
+          front: c.front,
+          back: c.back,
+          back_short: c.backShort ?? null,
+          category: c.category ?? null,
+          tags: c.tags,
+          front_image: c.frontImage ?? null,
+          back_image: c.backImage ?? null,
+          front_translation: c.frontTranslation ?? null,
+          back_translation: c.backTranslation ?? null,
+          due: c.due,
+          stability: c.stability,
+          difficulty: c.difficulty,
+          elapsed_days: c.elapsed_days,
+          scheduled_days: c.scheduled_days,
+          reps: c.reps,
+          lapses: c.lapses,
+          state: c.state,
+          last_review: c.last_review ?? null,
+          next_review_date: c.nextReviewDate ?? null,
+          difficulty_score: c.difficultyScore ?? null,
+          repetition: c.repetition ?? 0,
+          interval_days: c.interval ?? 0,
+          easiness: c.easiness ?? 2.5,
+          created_at: c.createdAt,
+          updated_at: c.updatedAt,
+        }))
+      );
+      if (error) throw error;
     }
-    return data;
-  };
 
-  const addCard = async (deck_id: string, front_content: string, back_content: string) => {
-    if (!user) return null;
-    const { data, error } = await supabase
-      .from('cards')
-      .insert([{ user_id: user.id, deck_id, front_content, back_content }])
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Error adding card:', error);
-      return null;
+    // Upsert review logs in batches of 500
+    if (logs.length > 0) {
+      for (let i = 0; i < logs.length; i += 500) {
+        const batch = logs.slice(i, i + 500);
+        const { error } = await supabase.from('review_logs').upsert(
+          batch.map(l => ({
+            id: l.id,
+            user_id: user.id,
+            card_id: l.cardId,
+            quality: l.quality,
+            elapsed_days: l.elapsed_days,
+            scheduled_days: l.scheduled_days,
+            review: l.review,
+            state: l.state,
+            timestamp: l.timestamp,
+          }))
+        );
+        if (error) throw error;
+      }
     }
-    return data;
+
+    // Upsert settings
+    const { error: settingsError } = await supabase.from('user_settings').upsert({
+      user_id: user.id,
+      target_retention: settings.targetRetention,
+      auto_translate: settings.autoTranslate ?? false,
+      target_language: settings.targetLanguage ?? 'English',
+      answer_display_mode: settings.answerDisplayMode ?? 'long',
+      updated_at: Date.now(),
+    });
+    if (settingsError) throw settingsError;
   };
 
-  const updateCardReview = async (card_id: string, difficulty_level: number, next_review_date: string) => {
-    if (!user) return;
-    
-    // Optimistic update
-    setCards(prev => prev.map(c => 
-      c.id === card_id 
-        ? { ...c, difficulty_level, next_review_date } 
-        : c
-    ));
+  const fetchFromCloud = async (): Promise<{ cards: Card[]; decks: Deck[]; logs: ReviewLog[]; settings: UserSettings | null }> => {
+    if (!user) throw new Error('Not signed in');
 
-    const { error } = await supabase
-      .from('cards')
-      .update({ difficulty_level, next_review_date })
-      .eq('id', card_id)
-      .eq('user_id', user.id);
+    const [decksRes, cardsRes, logsRes, settingsRes] = await Promise.all([
+      supabase.from('decks').select('*').eq('user_id', user.id),
+      supabase.from('cards').select('*').eq('user_id', user.id),
+      supabase.from('review_logs').select('*').eq('user_id', user.id),
+      supabase.from('user_settings').select('*').eq('user_id', user.id).single(),
+    ]);
 
-    if (error) {
-      console.error('Error updating card review:', error);
-      // Rollback logic could go here
+    if (decksRes.error) throw decksRes.error;
+    if (cardsRes.error) throw cardsRes.error;
+    if (logsRes.error) throw logsRes.error;
+
+    const decks: Deck[] = (decksRes.data ?? []).map((d: any) => ({
+      id: d.id,
+      name: d.name,
+      tags: d.tags ?? [],
+      createdAt: d.created_at,
+    }));
+
+    const cards: Card[] = (cardsRes.data ?? []).map((c: any) => ({
+      id: c.id,
+      front: c.front,
+      back: c.back,
+      backShort: c.back_short ?? undefined,
+      category: c.category ?? undefined,
+      tags: c.tags ?? [],
+      frontImage: c.front_image ?? undefined,
+      backImage: c.back_image ?? undefined,
+      frontTranslation: c.front_translation ?? undefined,
+      backTranslation: c.back_translation ?? undefined,
+      due: c.due,
+      stability: c.stability,
+      difficulty: c.difficulty,
+      elapsed_days: c.elapsed_days,
+      scheduled_days: c.scheduled_days,
+      reps: c.reps,
+      lapses: c.lapses,
+      state: c.state,
+      last_review: c.last_review ?? undefined,
+      nextReviewDate: c.next_review_date ?? undefined,
+      difficultyScore: c.difficulty_score ?? undefined,
+      repetition: c.repetition ?? 0,
+      interval: c.interval_days ?? 0,
+      easiness: c.easiness ?? 2.5,
+      createdAt: c.created_at,
+      updatedAt: c.updated_at,
+    }));
+
+    const logs: ReviewLog[] = (logsRes.data ?? []).map((l: any) => ({
+      id: l.id,
+      cardId: l.card_id,
+      quality: l.quality,
+      elapsed_days: l.elapsed_days,
+      scheduled_days: l.scheduled_days,
+      review: l.review,
+      state: l.state,
+      timestamp: l.timestamp,
+    }));
+
+    let settings: UserSettings | null = null;
+    if (settingsRes.data) {
+      const s = settingsRes.data as any;
+      settings = {
+        targetRetention: s.target_retention,
+        autoTranslate: s.auto_translate,
+        targetLanguage: s.target_language,
+        answerDisplayMode: s.answer_display_mode,
+      };
     }
-  };
 
-  const deleteCard = async (card_id: string) => {
-    if (!user) return;
-    const { error } = await supabase.from('cards').delete().eq('id', card_id).eq('user_id', user.id);
-    if (error) console.error('Error deleting card:', error);
-  };
-
-  const deleteDeck = async (deck_id: string) => {
-    if (!user) return;
-    const { error } = await supabase.from('decks').delete().eq('id', deck_id).eq('user_id', user.id);
-    if (error) console.error('Error deleting deck:', error);
+    return { cards, decks, logs, settings };
   };
 
   return (
-    <SupabaseContext.Provider value={{ user, decks, cards, loading, addDeck, addCard, updateCardReview, deleteCard, deleteDeck }}>
+    <SupabaseContext.Provider value={{ user, syncToCloud, fetchFromCloud }}>
       {children}
     </SupabaseContext.Provider>
   );

@@ -16,50 +16,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
   const [autoTranslate, setAutoTranslate] = useState(settings.autoTranslate || false);
   const [targetLanguage, setTargetLanguage] = useState(settings.targetLanguage || 'English');
   const [answerDisplayMode, setAnswerDisplayMode] = useState<'short' | 'long' | 'both'>(settings.answerDisplayMode || 'long');
-  
+
   const [isSyncing, setIsSyncing] = useState(false);
-  const { cards, decks, logs, importCards, saveDecks } = useStorage();
-  const { user, decks: supabaseDecks, cards: supabaseCards } = useSupabase();
+  const { cards, decks, logs, importCards, saveDecks, saveSettings, refreshData } = useStorage();
+  const { user, syncToCloud, fetchFromCloud } = useSupabase();
 
   const handleSyncToCloud = async () => {
     if (!user) return;
     setIsSyncing(true);
     try {
-      // 1. Push Decks
-      for (const deck of decks) {
-        const { error } = await supabase.from('decks').upsert({
-          id: deck.id,
-          user_id: user.id,
-          title: deck.name,
-          description: deck.tags.join(', '),
-          created_at: new Date(deck.createdAt).toISOString(),
-        });
-        if (error) throw error;
-      }
-
-      // 2. Push Cards
-      for (const card of cards) {
-        // Find a matching deck or use default
-        const deck = decks.find(d => d.name === card.category) || decks[0];
-        const deck_id = deck ? deck.id : 'default';
-
-        const { error } = await supabase.from('cards').upsert({
-          id: card.id,
-          deck_id,
-          user_id: user.id,
-          front_content: card.front,
-          back_content: card.back,
-          difficulty_level: card.difficultyScore || 3,
-          next_review_date: new Date(card.nextReviewDate || Date.now()).toISOString(),
-          created_at: new Date(card.createdAt).toISOString(),
-        });
-        if (error) throw error;
-      }
-
-      alert('Data successfully synced to Supabase!');
+      await syncToCloud(cards, decks, logs, settings);
+      alert(`Uploaded ${cards.length} cards, ${decks.length} decks, and ${logs.length} review logs to cloud.`);
     } catch (error) {
       console.error(error);
-      alert('Failed to sync data to cloud: ' + (error instanceof Error ? error.message : String(error)));
+      alert('Failed to sync to cloud: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setIsSyncing(false);
     }
@@ -69,50 +39,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
     if (!user) return;
     setIsSyncing(true);
     try {
-      if (supabaseDecks.length > 0) {
-        const mappedDecks = supabaseDecks.map(d => ({
-          id: d.id,
-          name: d.title,
-          tags: d.description ? d.description.split(',').map(t => t.trim()) : [],
-          createdAt: new Date(d.created_at).getTime()
-        }));
-        await saveDecks(mappedDecks);
-      }
+      const { cards: cloudCards, decks: cloudDecks, settings: cloudSettings } = await fetchFromCloud();
 
-      if (supabaseCards.length > 0) {
-        const mappedCards = supabaseCards.map(c => {
-          const deck = supabaseDecks.find(d => d.id === c.deck_id);
-          return {
-            id: c.id,
-            front: c.front_content,
-            back: c.back_content,
-            category: deck ? deck.title : 'Uncategorized',
-            tags: [],
-            due: new Date(c.next_review_date).getTime(),
-            nextReviewDate: new Date(c.next_review_date).getTime(),
-            difficultyScore: c.difficulty_level,
-            createdAt: new Date(c.created_at).getTime(),
-            updatedAt: new Date(c.created_at).getTime(),
-            stability: 0,
-            difficulty: 0,
-            elapsed_days: 0,
-            scheduled_days: 0,
-            reps: 0,
-            lapses: 0,
-            state: 0,
-            repetition: 0,
-            interval: 0,
-            easiness: 2.5,
-          };
-        });
-        await importCards(mappedCards);
-        alert('Data successfully fetched from Supabase!');
-      } else {
-        alert('No cards found in cloud.');
-      }
+      if (cloudDecks.length > 0) await saveDecks(cloudDecks);
+      if (cloudCards.length > 0) await importCards(cloudCards);
+      if (cloudSettings) await saveSettings(cloudSettings);
+
+      await refreshData();
+      alert(`Downloaded ${cloudCards.length} cards and ${cloudDecks.length} decks from cloud.`);
     } catch (error) {
       console.error(error);
-      alert('Failed to fetch data from cloud: ' + (error instanceof Error ? error.message : String(error)));
+      alert('Failed to fetch from cloud: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setIsSyncing(false);
     }
@@ -122,12 +59,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
     e.preventDefault();
     const retention = parseFloat(targetRetention) / 100;
     if (retention >= 0.7 && retention <= 0.99) {
-      onSave({ 
-        ...settings, 
+      onSave({
+        ...settings,
         targetRetention: retention,
         autoTranslate,
         targetLanguage,
-        answerDisplayMode
+        answerDisplayMode,
       });
       alert('Settings saved successfully!');
     } else {
@@ -148,7 +85,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
             Target Retention Rate (%)
           </label>
           <p className="text-xs text-slate-400 mb-2">
-            The FSRS algorithm will adjust intervals to ensure you remember this percentage of cards. 
+            The FSRS algorithm will adjust intervals to ensure you remember this percentage of cards.
             Higher retention means more frequent reviews. Recommended: 85% - 95%.
           </p>
           <div className="flex items-center gap-4">
@@ -168,7 +105,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
 
         <div className="pt-6 border-t border-slate-700 space-y-4">
           <h3 className="text-lg font-bold text-white">AI Translation</h3>
-          
+
           <div className="space-y-2 pt-2">
             <label className="text-sm font-bold text-slate-200">
               Target Language
@@ -189,7 +126,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
 
         <div className="pt-6 border-t border-slate-700 space-y-4">
           <h3 className="text-lg font-bold text-white">Study Preferences</h3>
-          
+
           <div className="space-y-2 pt-2">
             <label className="text-sm font-bold text-slate-200">
               Answer Display Mode
@@ -210,8 +147,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
         </div>
 
         <div className="pt-6 border-t border-slate-700 space-y-4">
-          <h3 className="text-lg font-bold text-white">Cloud Sync (Supabase)</h3>
-          
+          <h3 className="text-lg font-bold text-white">Cloud Sync</h3>
+          <p className="text-xs text-slate-400">
+            Sign in to back up your cards and access them on any device. All FSRS scheduling data is preserved.
+          </p>
+
           {!user ? (
             <div className="mt-4">
               <AuthUI />
@@ -220,7 +160,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
             <div className="p-4 bg-slate-900 border border-slate-700 rounded-xl space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-violet-500/20 rounded-full flex items-center justify-center text-violet-400 font-bold">
+                  <div className="w-10 h-10 bg-violet-500/20 rounded-full flex items-center justify-center text-violet-400 font-bold text-lg">
                     {user.email?.[0].toUpperCase()}
                   </div>
                   <div>
@@ -236,7 +176,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
                   Sign Out
                 </button>
               </div>
-              
+
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
@@ -257,6 +197,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
                   Download from Cloud
                 </button>
               </div>
+
+              <p className="text-xs text-slate-500 text-center">
+                {cards.length} cards · {decks.length} decks · {logs.length} review logs
+              </p>
             </div>
           )}
         </div>
