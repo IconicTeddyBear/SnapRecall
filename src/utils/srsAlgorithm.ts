@@ -5,13 +5,15 @@ export function calculateNextReview(card: Card, quality: number, settings: UserS
   const params = generatorParameters({ request_retention: settings.targetRetention || 0.90 });
   const fsrs = new FSRS(params);
 
-  // Map quality (1-5) to FSRS Rating (FSRS has 4 ratings; Neutral maps to Hard)
-  // 1=Again, 2=Hard, 3=Neutral (recalled but uncertain → Hard), 4=Good, 5=Easy
+  // Map quality (1-5) to FSRS Rating
+  // 1=Again, 2=Hard, 3=Neutral, 4=Good, 5=Easy
+  // FSRS has 4 ratings (Again/Hard/Good/Easy). Neutral(3) maps to Hard —
+  // a borderline recall that should shorten the interval vs a confident Good(4).
   let rating = Rating.Good;
   if (quality === 1) rating = Rating.Again;
   else if (quality === 2) rating = Rating.Hard;
-  else if (quality === 3) rating = Rating.Hard;
-  else if (quality === 4) rating = Rating.Good;
+  else if (quality === 3) rating = Rating.Hard; // Neutral → Hard (conservative: not a confident recall)
+  else if (quality === 4) rating = Rating.Good; // Good → Good
   else if (quality === 5) rating = Rating.Easy;
 
   // Reconstruct FSRS card from our Card model

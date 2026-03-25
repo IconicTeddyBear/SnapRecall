@@ -5,6 +5,7 @@ import { useStorage } from '../contexts/StorageContext';
 import { useSupabase } from '../contexts/SupabaseContext';
 import { AuthUI } from '../components/AuthUI';
 import { supabase } from '../services/supabaseClient';
+import type { SupabaseCard, SupabaseDeck } from '../contexts/SupabaseContext';
 
 interface SettingsViewProps {
   settings: UserSettings;
@@ -18,15 +19,90 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
   const [answerDisplayMode, setAnswerDisplayMode] = useState<'short' | 'long' | 'both'>(settings.answerDisplayMode || 'long');
 
   const [isSyncing, setIsSyncing] = useState(false);
-  const { cards, decks, logs, importCards, saveDecks, saveSettings, refreshData } = useStorage();
-  const { user, syncToCloud, fetchFromCloud } = useSupabase();
+  const { cards, decks, logs, importCards, saveDecks } = useStorage();
+  const { user, decks: supabaseDecks, cards: supabaseCards, signOut } = useSupabase();
 
   const handleSyncToCloud = async () => {
     if (!user) return;
     setIsSyncing(true);
     try {
-      await syncToCloud(cards, decks, logs, settings);
-      alert(`Uploaded ${cards.length} cards, ${decks.length} decks, and ${logs.length} review logs to cloud.`);
+      // 1. Push decks (skip the virtual 'default' deck — its id is not a UUID)
+      const syncableDecks = decks.filter(d => d.id !== 'default');
+      for (const deck of syncableDecks) {
+        const row = {
+          id: deck.id,
+          user_id: user.id,
+          title: deck.name,
+          description: deck.tags.join(', ') || null,
+          tags: deck.tags,
+          created_at_ms: deck.createdAt,
+          created_at: new Date(deck.createdAt).toISOString(),
+        };
+        const { error } = await supabase.from('decks').upsert(row);
+        if (error) throw error;
+      }
+
+      // 2. Push cards with full FSRS data
+      for (const card of cards) {
+        const row: Omit<SupabaseCard, 'next_review_date'> & { next_review_date: string } = {
+          id: card.id,
+          user_id: user.id,
+          deck_id: null,
+          // Content
+          front_content: card.front,
+          back_content: card.back,
+          back_short: card.backShort ?? null,
+          category: card.category ?? null,
+          tags: card.tags,
+          front_image: card.frontImage ?? null,
+          back_image: card.backImage ?? null,
+          front_translation: card.frontTranslation ?? null,
+          back_translation: card.backTranslation ?? null,
+          // FSRS
+          stability: card.stability,
+          difficulty_fsrs: card.difficulty,
+          elapsed_days: card.elapsed_days,
+          scheduled_days: card.scheduled_days,
+          reps: card.reps,
+          lapses: card.lapses,
+          state: card.state,
+          last_review: card.last_review ?? null,
+          due: card.due,
+          // Legacy SM-2
+          repetition: card.repetition ?? 0,
+          interval_days: card.interval ?? 0,
+          easiness: card.easiness ?? 2.5,
+          difficulty_score: card.difficultyScore ?? 3,
+          // Timestamps
+          created_at_ms: card.createdAt,
+          updated_at: card.updatedAt,
+          // Back-compat columns (migration 00001)
+          difficulty_level: card.difficultyScore ?? 3,
+          next_review_date: new Date(card.due || card.nextReviewDate || Date.now()).toISOString(),
+          created_at: new Date(card.createdAt).toISOString(),
+        };
+        const { error } = await supabase.from('cards').upsert(row);
+        if (error) throw error;
+      }
+
+      // 3. Push review logs
+      for (const log of logs) {
+        const row = {
+          id: log.id,
+          user_id: user.id,
+          card_id: log.cardId,
+          quality: log.quality,
+          elapsed_days: log.elapsed_days,
+          scheduled_days: log.scheduled_days,
+          review: log.review,
+          state: log.state,
+          timestamp: log.timestamp,
+        };
+        const { error } = await supabase.from('review_logs').upsert(row);
+        if (error) throw error;
+      }
+
+      alert(`Synced ${cards.length} cards, ${syncableDecks.length} decks, and ${logs.length} review logs to cloud.`);
     } catch (error) {
       console.error(error);
       alert('Failed to sync to cloud: ' + (error instanceof Error ? error.message : String(error)));
@@ -39,14 +115,91 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
     if (!user) return;
     setIsSyncing(true);
     try {
-      const { cards: cloudCards, decks: cloudDecks, settings: cloudSettings } = await fetchFromCloud();
+      // 1. Fetch and restore decks
+      if (supabaseDecks.length > 0) {
+        const mappedDecks = supabaseDecks.map((d: SupabaseDeck) => ({
+          id: d.id,
+          name: d.title,
+          // Prefer the tags array; fall back to parsing the description string
+          tags: (d.tags && d.tags.length > 0)
+            ? d.tags
+            : (d.description ? d.description.split(',').map(t => t.trim()).filter(Boolean) : []),
+          createdAt: d.created_at_ms || new Date(d.created_at).getTime(),
+        }));
+        await saveDecks(mappedDecks);
+      }
 
-      if (cloudDecks.length > 0) await saveDecks(cloudDecks);
-      if (cloudCards.length > 0) await importCards(cloudCards);
-      if (cloudSettings) await saveSettings(cloudSettings);
+      // 2. Fetch and restore cards with full FSRS data
+      if (supabaseCards.length > 0) {
+        const mappedCards = supabaseCards.map((c: SupabaseCard) => ({
+          id: c.id,
+          front: c.front_content,
+          back: c.back_content,
+          backShort: c.back_short ?? undefined,
+          category: c.category ?? undefined,
+          tags: c.tags ?? [],
+          frontImage: c.front_image ?? undefined,
+          backImage: c.back_image ?? undefined,
+          frontTranslation: c.front_translation ?? undefined,
+          backTranslation: c.back_translation ?? undefined,
+          // FSRS — use stored values; fall back to 0 for cards synced before migration 00002
+          stability: c.stability ?? 0,
+          difficulty: c.difficulty_fsrs ?? 0,
+          elapsed_days: c.elapsed_days ?? 0,
+          scheduled_days: c.scheduled_days ?? 0,
+          reps: c.reps ?? 0,
+          lapses: c.lapses ?? 0,
+          state: c.state ?? 0,
+          last_review: c.last_review ?? undefined,
+          due: c.due || new Date(c.next_review_date).getTime() || Date.now(),
+          // Legacy SM-2
+          repetition: c.repetition ?? 0,
+          interval: c.interval_days ?? 0,
+          easiness: c.easiness ?? 2.5,
+          difficultyScore: c.difficulty_score || c.difficulty_level || 3,
+          nextReviewDate: c.due || new Date(c.next_review_date).getTime(),
+          // Timestamps
+          createdAt: c.created_at_ms || new Date(c.created_at).getTime(),
+          updatedAt: c.updated_at || new Date(c.created_at).getTime(),
+        }));
+        await importCards(mappedCards);
+      }
 
-      await refreshData();
-      alert(`Downloaded ${cloudCards.length} cards and ${cloudDecks.length} decks from cloud.`);
+      // 3. Fetch review logs
+      const { data: cloudLogs, error: logsError } = await supabase
+        .from('review_logs')
+        .select('*')
+        .order('timestamp', { ascending: true });
+
+      if (logsError) throw logsError;
+
+      if (cloudLogs && cloudLogs.length > 0) {
+        // importCards handles cards; logs need to be added through addLog.
+        // We store them via the StorageContext refreshData after importCards,
+        // but review_logs have no direct bulk-import helper. Instead we
+        // upsert them directly into IndexedDB via the dbService.
+        const { dbService } = await import('../services/db');
+        for (const log of cloudLogs) {
+          await dbService.addLog({
+            id: log.id,
+            cardId: log.card_id,
+            quality: log.quality,
+            elapsed_days: log.elapsed_days,
+            scheduled_days: log.scheduled_days,
+            review: log.review,
+            state: log.state,
+            timestamp: log.timestamp,
+          });
+        }
+      }
+
+      const cardCount = supabaseCards.length;
+      const logCount = cloudLogs?.length ?? 0;
+      if (cardCount > 0 || logCount > 0) {
+        alert(`Downloaded ${cardCount} cards and ${logCount} review logs from cloud.`);
+      } else {
+        alert('No data found in cloud.');
+      }
     } catch (error) {
       console.error(error);
       alert('Failed to fetch from cloud: ' + (error instanceof Error ? error.message : String(error)));
@@ -170,7 +323,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
                 </div>
                 <button
                   type="button"
-                  onClick={() => supabase.auth.signOut()}
+                  onClick={signOut}
                   className="text-slate-400 hover:text-rose-400 transition-colors p-2 text-sm font-bold"
                 >
                   Sign Out
