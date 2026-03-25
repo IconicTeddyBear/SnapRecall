@@ -89,7 +89,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => onCreateCard()}
+            onClick={() => onCreateCard(undefined, selectedCategory || undefined)}
             className="flex items-center gap-2 bg-slate-700 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-slate-600 transition-all border border-slate-600 text-sm"
           >
             <Plus size={16} />

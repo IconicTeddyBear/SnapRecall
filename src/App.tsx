@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, Deck, ReviewLog } from './models/types';
 import { DashboardView } from './views/DashboardView';
 import { EditorView } from './views/EditorView';
@@ -17,7 +17,7 @@ import { supabase } from './services/supabaseClient';
 type View = 'dashboard' | 'study' | 'editor' | 'decks' | 'analytics' | 'settings';
 
 function MainApp() {
-  const { cards, decks, logs, settings, loading, addCard, updateCard, deleteCard, addLog, importCards, saveSettings, saveDeck } = useStorage();
+  const { cards, decks, logs, settings, loading, addCard, updateCard, deleteCard, addLog, importCards, saveSettings, saveDeck, saveDecks } = useStorage();
   const { user } = useSupabase();
 
   // Toast notification when auth state changes
@@ -39,6 +39,71 @@ function MainApp() {
     return () => clearTimeout(t);
   }, [toast]);
 
+
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleQuickSync = useCallback(async () => {
+    if (!user || isSyncing) return;
+    setIsSyncing(true);
+    try {
+      const syncableDecks = decks.filter(d => d.id !== 'default');
+      for (const deck of syncableDecks) {
+        const row = {
+          id: deck.id,
+          user_id: user.id,
+          title: deck.name,
+          description: deck.tags.join(', ') || null,
+          tags: deck.tags,
+          created_at_ms: deck.createdAt,
+          created_at: new Date(deck.createdAt).toISOString(),
+        };
+        const { error } = await supabase.from('decks').upsert(row);
+        if (error) throw error;
+      }
+      for (const card of cards) {
+        const row = {
+          id: card.id,
+          user_id: user.id,
+          deck_id: null,
+          front_content: card.front,
+          back_content: card.back,
+          back_short: card.backShort ?? null,
+          category: card.category ?? null,
+          tags: card.tags,
+          front_image: card.frontImage ?? null,
+          back_image: card.backImage ?? null,
+          front_translation: card.frontTranslation ?? null,
+          back_translation: card.backTranslation ?? null,
+          stability: card.stability,
+          difficulty_fsrs: card.difficulty,
+          elapsed_days: card.elapsed_days,
+          scheduled_days: card.scheduled_days,
+          reps: card.reps,
+          lapses: card.lapses,
+          state: card.state,
+          last_review: card.last_review ?? null,
+          due: card.due,
+          repetition: card.repetition ?? 0,
+          interval_days: card.interval ?? 0,
+          easiness: card.easiness ?? 2.5,
+          difficulty_score: card.difficultyScore ?? 3,
+          created_at_ms: card.createdAt,
+          updated_at: card.updatedAt,
+          difficulty_level: card.difficultyScore ?? 3,
+          next_review_date: new Date(card.due || card.nextReviewDate || Date.now()).toISOString(),
+          created_at: new Date(card.createdAt).toISOString(),
+        };
+        const { error } = await supabase.from('cards').upsert(row);
+        if (error) throw error;
+      }
+      setToast(`Synced ${cards.length} cards to cloud`);
+    } catch (e) {
+      console.error('Sync error', e);
+      setToast('Sync failed — check console');
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [user, isSyncing, decks, cards]);
 
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
@@ -484,8 +549,28 @@ function MainApp() {
               </button>
             </nav>
 
+            {/* Sync button (only when signed in) */}
+            {user && (
+              <button
+                onClick={handleQuickSync}
+                disabled={isSyncing}
+                title="Sync to cloud"
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 transition-colors flex-shrink-0 disabled:opacity-50"
+              >
+                {isSyncing ? (
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" strokeLinecap="round" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                )}
+              </button>
+            )}
+
             {/* Auth indicator */}
-            {user ? (
+            {user && (
               <button
                 onClick={() => setCurrentView('settings')}
                 title={user.email ?? ''}
@@ -493,13 +578,6 @@ function MainApp() {
               >
                 {user.email?.[0].toUpperCase()}
                 <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-slate-900 rounded-full" />
-              </button>
-            ) : (
-              <button
-                onClick={() => setCurrentView('settings')}
-                className="text-xs font-bold text-slate-400 hover:text-violet-400 transition-colors flex-shrink-0"
-              >
-                Sign In
               </button>
             )}
           </div>

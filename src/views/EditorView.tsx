@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { Card } from '../models/types';
-import { X, Save, Tag as TagIcon, Image as ImageIcon, Trash2, Eye, Languages, Loader2 } from 'lucide-react';
+import { X, Save, Tag as TagIcon, Image as ImageIcon, Trash2, Eye, Languages, Loader2, Wand2 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { translateCard } from '../utils/aiTranslator';
+import { translateCard, summarizeCard } from '../utils/aiTranslator';
 import DOMPurify from 'dompurify';
 
 interface EditorViewProps {
@@ -28,6 +28,7 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
   const [frontTranslation, setFrontTranslation] = useState(card?.frontTranslation || '');
   const [backTranslation, setBackTranslation] = useState(card?.backTranslation || '');
   const [isTranslating, setIsTranslating] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
 
   const frontInputRef = useRef<HTMLInputElement>(null);
   const backInputRef = useRef<HTMLInputElement>(null);
@@ -53,9 +54,22 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
       setFrontTranslation(ft);
       setBackTranslation(bt);
     } catch (error) {
-      alert('Failed to translate card. Please try again.');
+      alert(`Translation failed: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsTranslating(false);
+    }
+  };
+
+  const handleSummarize = async () => {
+    if (!back) return;
+    setIsSummarizing(true);
+    try {
+      const { backShort: summary } = await summarizeCard(back);
+      setBackShort(summary);
+    } catch (error) {
+      alert(`Summarize failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsSummarizing(false);
     }
   };
 
@@ -314,6 +328,15 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
           >
             {isTranslating ? <Loader2 size={20} className="animate-spin" /> : <Languages size={20} />}
             Auto-Translate
+          </button>
+          <button
+            type="button"
+            onClick={handleSummarize}
+            disabled={isSummarizing || !back}
+            className="flex-1 md:flex-none bg-slate-700 text-white px-6 py-4 rounded-2xl font-bold hover:bg-slate-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSummarizing ? <Loader2 size={20} className="animate-spin" /> : <Wand2 size={20} />}
+            Auto-Summarize
           </button>
           
           <button
