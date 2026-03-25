@@ -2,43 +2,86 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { User } from '@supabase/supabase-js';
 
-export interface Deck {
+// ─── Supabase-side types (match the DB schema after migration 00002) ────────
+
+export interface SupabaseDeck {
   id: string;
   user_id: string;
   title: string;
   description: string | null;
+  tags: string[];
+  created_at_ms: number;
   created_at: string;
 }
 
-export interface Card {
+export interface SupabaseCard {
   id: string;
-  deck_id: string;
+  deck_id: string | null;
   user_id: string;
+  // Content
   front_content: string;
   back_content: string;
+  back_short: string | null;
+  category: string | null;
+  tags: string[];
+  front_image: string | null;
+  back_image: string | null;
+  front_translation: string | null;
+  back_translation: string | null;
+  // FSRS scheduling
+  stability: number;
+  difficulty_fsrs: number;
+  elapsed_days: number;
+  scheduled_days: number;
+  reps: number;
+  lapses: number;
+  state: number;
+  last_review: number | null;
+  due: number;
+  // Legacy SM-2
+  repetition: number;
+  interval_days: number;
+  easiness: number;
+  difficulty_score: number;
+  // Timestamps
+  created_at_ms: number;
+  updated_at: number;
+  // Original columns (kept for back-compat with migration 00001)
   difficulty_level: number;
   next_review_date: string;
   created_at: string;
 }
 
+export interface SupabaseReviewLog {
+  id: string;
+  user_id: string;
+  card_id: string;
+  quality: number;
+  elapsed_days: number;
+  scheduled_days: number;
+  review: number;
+  state: number;
+  timestamp: number;
+}
+
+// ─── Context type ───────────────────────────────────────────────────────────
+
 interface SupabaseContextType {
   user: User | null;
-  decks: Deck[];
-  cards: Card[];
+  decks: SupabaseDeck[];
+  cards: SupabaseCard[];
   loading: boolean;
-  addDeck: (title: string, description?: string) => Promise<Deck | null>;
-  addCard: (deck_id: string, front_content: string, back_content: string) => Promise<Card | null>;
-  updateCardReview: (card_id: string, difficulty_level: number, next_review_date: string) => Promise<void>;
-  deleteCard: (card_id: string) => Promise<void>;
-  deleteDeck: (deck_id: string) => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const SupabaseContext = createContext<SupabaseContextType | undefined>(undefined);
 
+// ─── Provider ───────────────────────────────────────────────────────────────
+
 export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [decks, setDecks] = useState<Deck[]>([]);
-  const [cards, setCards] = useState<Card[]>([]);
+  const [decks, setDecks] = useState<SupabaseDeck[]>([]);
+  const [cards, setCards] = useState<SupabaseCard[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Auth state listener
@@ -54,7 +97,7 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch initial data when user logs in
+  // Fetch decks + cards whenever the signed-in user changes
   useEffect(() => {
     if (!user) {
       setDecks([]);
@@ -65,136 +108,81 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const fetchData = async () => {
       setLoading(true);
-      
+
       const [decksResponse, cardsResponse] = await Promise.all([
         supabase.from('decks').select('*').order('created_at', { ascending: false }),
-        supabase.from('cards').select('*').order('created_at', { ascending: false })
+        supabase.from('cards').select('*').order('created_at', { ascending: false }),
       ]);
 
-      if (decksResponse.data) setDecks(decksResponse.data);
-      if (cardsResponse.data) setCards(cardsResponse.data);
-      
+      if (decksResponse.data) setDecks(decksResponse.data as SupabaseDeck[]);
+      if (cardsResponse.data) setCards(cardsResponse.data as SupabaseCard[]);
+
       setLoading(false);
     };
 
     fetchData();
   }, [user]);
 
-  // Realtime subscription for cards
+  // Realtime: cards
   useEffect(() => {
     if (!user) return;
 
     const channel = supabase
-      .channel('public:cards')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cards', filter: `user_id=eq.${user.id}` }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setCards((prev) => [payload.new as Card, ...prev]);
-        } else if (payload.eventType === 'UPDATE') {
-          setCards((prev) => prev.map(c => c.id === payload.new.id ? (payload.new as Card) : c));
-        } else if (payload.eventType === 'DELETE') {
-          setCards((prev) => prev.filter(c => c.id !== payload.old.id));
-        }
-      })
+      .channel('realtime:cards')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'cards', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setCards((prev) => [payload.new as SupabaseCard, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setCards((prev) => prev.map(c => c.id === payload.new.id ? (payload.new as SupabaseCard) : c));
+          } else if (payload.eventType === 'DELETE') {
+            setCards((prev) => prev.filter(c => c.id !== payload.old.id));
+          }
+        },
+      )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
-  // Realtime subscription for decks
+  // Realtime: decks
   useEffect(() => {
     if (!user) return;
 
     const channel = supabase
-      .channel('public:decks')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'decks', filter: `user_id=eq.${user.id}` }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setDecks((prev) => [payload.new as Deck, ...prev]);
-        } else if (payload.eventType === 'UPDATE') {
-          setDecks((prev) => prev.map(d => d.id === payload.new.id ? (payload.new as Deck) : d));
-        } else if (payload.eventType === 'DELETE') {
-          setDecks((prev) => prev.filter(d => d.id !== payload.old.id));
-        }
-      })
+      .channel('realtime:decks')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'decks', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setDecks((prev) => [payload.new as SupabaseDeck, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setDecks((prev) => prev.map(d => d.id === payload.new.id ? (payload.new as SupabaseDeck) : d));
+          } else if (payload.eventType === 'DELETE') {
+            setDecks((prev) => prev.filter(d => d.id !== payload.old.id));
+          }
+        },
+      )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [user]);
 
-  // Actions
-  const addDeck = async (title: string, description?: string) => {
-    if (!user) return null;
-    const { data, error } = await supabase
-      .from('decks')
-      .insert([{ user_id: user.id, title, description }])
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Error adding deck:', error);
-      return null;
-    }
-    return data;
-  };
-
-  const addCard = async (deck_id: string, front_content: string, back_content: string) => {
-    if (!user) return null;
-    const { data, error } = await supabase
-      .from('cards')
-      .insert([{ user_id: user.id, deck_id, front_content, back_content }])
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Error adding card:', error);
-      return null;
-    }
-    return data;
-  };
-
-  const updateCardReview = async (card_id: string, difficulty_level: number, next_review_date: string) => {
-    if (!user) return;
-    
-    // Optimistic update
-    setCards(prev => prev.map(c => 
-      c.id === card_id 
-        ? { ...c, difficulty_level, next_review_date } 
-        : c
-    ));
-
-    const { error } = await supabase
-      .from('cards')
-      .update({ difficulty_level, next_review_date })
-      .eq('id', card_id)
-      .eq('user_id', user.id);
-
-    if (error) {
-      console.error('Error updating card review:', error);
-      // Rollback logic could go here
-    }
-  };
-
-  const deleteCard = async (card_id: string) => {
-    if (!user) return;
-    const { error } = await supabase.from('cards').delete().eq('id', card_id).eq('user_id', user.id);
-    if (error) console.error('Error deleting card:', error);
-  };
-
-  const deleteDeck = async (deck_id: string) => {
-    if (!user) return;
-    const { error } = await supabase.from('decks').delete().eq('id', deck_id).eq('user_id', user.id);
-    if (error) console.error('Error deleting deck:', error);
+  const signOut = async () => {
+    await supabase.auth.signOut();
   };
 
   return (
-    <SupabaseContext.Provider value={{ user, decks, cards, loading, addDeck, addCard, updateCardReview, deleteCard, deleteDeck }}>
+    <SupabaseContext.Provider value={{ user, decks, cards, loading, signOut }}>
       {children}
     </SupabaseContext.Provider>
   );
 };
+
+// ─── Hook ───────────────────────────────────────────────────────────────────
 
 export const useSupabase = () => {
   const context = useContext(SupabaseContext);
