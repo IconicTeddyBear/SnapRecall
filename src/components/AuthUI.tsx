@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { Mail, Lock, Loader2, LogOut } from 'lucide-react';
+import { Mail, Lock, Loader2, LogOut, CheckCircle2 } from 'lucide-react';
 import { useSupabase } from '../contexts/SupabaseContext';
 
 export const AuthUI: React.FC = () => {
@@ -10,6 +10,7 @@ export const AuthUI: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [justSignedIn, setJustSignedIn] = useState(false);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,18 +19,13 @@ export const AuthUI: React.FC = () => {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
+        const { error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
-        alert('Check your email for the login link!');
+        setJustSignedIn(true);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        setJustSignedIn(true);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred during authentication');
@@ -39,26 +35,42 @@ export const AuthUI: React.FC = () => {
   };
 
   const handleSignOut = async () => {
+    setJustSignedIn(false);
     await supabase.auth.signOut();
   };
 
+  // Signed-in state
   if (user) {
     return (
-      <div className="p-6 bg-slate-800 rounded-2xl border border-slate-700 shadow-xl flex flex-col items-center gap-4">
-        <div className="w-16 h-16 bg-violet-500/20 rounded-full flex items-center justify-center">
-          <Mail className="text-violet-400" size={32} />
+      <div className="p-5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center gap-4">
+        <div className="w-10 h-10 bg-violet-600 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+          {user.email?.[0].toUpperCase()}
         </div>
-        <div className="text-center">
-          <h3 className="text-xl font-bold text-white">Signed In</h3>
-          <p className="text-sm text-slate-400 mt-1">{user.email}</p>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
+            <p className="text-sm font-bold text-white">Signed in</p>
+          </div>
+          <p className="text-xs text-slate-400 truncate mt-0.5">{user.email}</p>
         </div>
         <button
           onClick={handleSignOut}
-          className="mt-4 flex items-center gap-2 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white rounded-lg text-xs font-bold transition-colors flex-shrink-0"
         >
-          <LogOut size={18} />
+          <LogOut size={14} />
           Sign Out
         </button>
+      </div>
+    );
+  }
+
+  // Just submitted but auth state hasn't updated yet (sign-up email case)
+  if (justSignedIn && isSignUp) {
+    return (
+      <div className="p-5 bg-violet-500/10 border border-violet-500/30 rounded-2xl text-center space-y-2">
+        <CheckCircle2 size={32} className="text-violet-400 mx-auto" />
+        <p className="font-bold text-white">Check your email</p>
+        <p className="text-sm text-slate-400">We sent a confirmation link to <span className="text-white">{email}</span></p>
       </div>
     );
   }
@@ -70,8 +82,8 @@ export const AuthUI: React.FC = () => {
           {isSignUp ? 'Create Account' : 'Welcome Back'}
         </h2>
         <p className="text-slate-400">
-          {isSignUp 
-            ? 'Sign up to sync your flashcards across devices' 
+          {isSignUp
+            ? 'Sign up to sync your flashcards across devices'
             : 'Sign in to access your synchronized flashcards'}
         </p>
       </div>
@@ -134,11 +146,11 @@ export const AuthUI: React.FC = () => {
       <div className="mt-6 text-center">
         <button
           type="button"
-          onClick={() => setIsSignUp(!isSignUp)}
+          onClick={() => { setIsSignUp(!isSignUp); setError(null); }}
           className="text-sm text-violet-400 hover:text-violet-300 font-medium transition-colors"
         >
-          {isSignUp 
-            ? 'Already have an account? Sign In' 
+          {isSignUp
+            ? 'Already have an account? Sign In'
             : "Don't have an account? Sign Up"}
         </button>
       </div>

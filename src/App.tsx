@@ -17,7 +17,7 @@ import { supabase } from './services/supabaseClient';
 type View = 'dashboard' | 'study' | 'editor' | 'decks' | 'analytics' | 'settings';
 
 function MainApp() {
-  const { cards, decks, logs, settings, loading, addCard, updateCard, deleteCard, addLog, importCards, saveSettings } = useStorage();
+  const { cards, decks, logs, settings, loading, addCard, updateCard, deleteCard, addLog, importCards, saveSettings, saveDeck } = useStorage();
   const { user } = useSupabase();
 
   // Toast notification when auth state changes
@@ -354,12 +354,21 @@ function MainApp() {
         );
       case 'decks':
         return (
-          <DecksView 
+          <DecksView
             cards={cards}
             decks={decks}
             onStudyDeck={handleStudyDeck}
             onStudyCategory={handleStudyCategory}
             onCreateCard={handleCreateNew}
+            onCreateDeck={async (name: string) => {
+              const newDeck = {
+                id: crypto.randomUUID(),
+                name,
+                tags: [name.toLowerCase().replace(/\s+/g, '-')],
+                createdAt: Date.now(),
+              };
+              await saveDeck(newDeck);
+            }}
             onEditCard={(card) => {
               setEditingCard(card);
               setCurrentView('editor');

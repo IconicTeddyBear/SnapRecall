@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Card, Deck } from '../models/types';
-import { ChevronRight, Folder, Tag, Play, BookOpen, Plus, Search, Zap, Copy, Trash2, Languages, Loader2, Eye, X } from 'lucide-react';
+import { ChevronRight, Folder, Play, BookOpen, Plus, Search, Zap, Copy, Trash2, Languages, Loader2, X, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Flashcard } from '../components/Flashcard';
 
@@ -10,6 +10,7 @@ interface DecksViewProps {
   onStudyDeck: (deckId: string, mode?: 'normal' | 'focus') => void;
   onStudyCategory: (category: string, mode?: 'normal' | 'focus') => void;
   onCreateCard: (initialTags?: string[], initialCategory?: string) => void;
+  onCreateDeck: (name: string) => Promise<void>;
   onEditCard: (card: Card) => void;
   onCopyCard: (card: Card) => void;
   onDeleteCard: (cardId: string) => void;
@@ -19,23 +20,39 @@ interface DecksViewProps {
   translatingCategory?: string | null;
 }
 
-export const DecksView: React.FC<DecksViewProps> = ({ 
-  cards, 
-  decks, 
-  onStudyDeck, 
-  onStudyCategory, 
-  onCreateCard, 
-  onEditCard, 
-  onCopyCard, 
+export const DecksView: React.FC<DecksViewProps> = ({
+  cards,
+  decks,
+  onStudyDeck,
+  onStudyCategory,
+  onCreateCard,
+  onCreateDeck,
+  onEditCard,
+  onCopyCard,
   onDeleteCard,
   selectedCategory,
   onSelectCategory,
   onTranslateCategory,
-  translatingCategory
+  translatingCategory,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [previewCard, setPreviewCard] = useState<Card | null>(null);
   const [isPreviewFlipped, setIsPreviewFlipped] = useState(false);
+  const [creatingDeck, setCreatingDeck] = useState(false);
+  const [newDeckName, setNewDeckName] = useState('');
+  const newDeckInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (creatingDeck) newDeckInputRef.current?.focus();
+  }, [creatingDeck]);
+
+  const handleCreateDeck = async () => {
+    const name = newDeckName.trim();
+    if (!name) return;
+    await onCreateDeck(name);
+    setNewDeckName('');
+    setCreatingDeck(false);
+  };
 
   const categories = useMemo(() => {
     const catMap = new Map<string, Set<string>>();
@@ -70,19 +87,77 @@ export const DecksView: React.FC<DecksViewProps> = ({
           <h2 className="text-2xl font-bold text-white">Library</h2>
           <p className="text-slate-400 text-sm">Browse your collection by category and tag.</p>
         </div>
-        <button 
-          onClick={() => onStudyDeck('default')}
-          className="flex items-center gap-2 bg-violet-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-violet-500 transition-all shadow-lg shadow-violet-500/20 active:scale-95"
-        >
-          <Play size={18} fill="currentColor" />
-          Study All ({dueCardsCount} Due)
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onCreateCard()}
+            className="flex items-center gap-2 bg-slate-700 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-slate-600 transition-all border border-slate-600 text-sm"
+          >
+            <Plus size={16} />
+            New Card
+          </button>
+          <button
+            onClick={() => onStudyDeck('default')}
+            className="flex items-center gap-2 bg-violet-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-violet-500 transition-all shadow-lg shadow-violet-500/20 active:scale-95 text-sm"
+          >
+            <Play size={16} fill="currentColor" />
+            Study All ({dueCardsCount} Due)
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-[calc(100vh-200px)]">
         {/* Categories List (Sidebar) */}
         <div className="lg:col-span-4 space-y-4 overflow-y-auto pr-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest sticky top-0 bg-slate-950 py-2 z-10">Categories</h3>
+          <div className="flex items-center justify-between sticky top-0 bg-slate-950 py-2 z-10">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Categories</h3>
+            <button
+              onClick={() => setCreatingDeck(true)}
+              className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-violet-400 transition-colors"
+            >
+              <Plus size={14} />
+              New Deck
+            </button>
+          </div>
+
+          {/* Inline new deck form */}
+          <AnimatePresence>
+            {creatingDeck && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="flex gap-2 mb-2">
+                  <input
+                    ref={newDeckInputRef}
+                    type="text"
+                    value={newDeckName}
+                    onChange={(e) => setNewDeckName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleCreateDeck();
+                      if (e.key === 'Escape') { setCreatingDeck(false); setNewDeckName(''); }
+                    }}
+                    placeholder="Deck name…"
+                    className="flex-1 px-3 py-2 bg-slate-800 border border-slate-600 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                  />
+                  <button
+                    onClick={handleCreateDeck}
+                    className="p-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl transition-colors"
+                  >
+                    <Check size={16} />
+                  </button>
+                  <button
+                    onClick={() => { setCreatingDeck(false); setNewDeckName(''); }}
+                    className="p-2 bg-slate-700 hover:bg-slate-600 text-slate-400 rounded-xl transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="grid gap-2">
             {categories.map(([cat, tags]) => (
               <button
