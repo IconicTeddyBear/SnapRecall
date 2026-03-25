@@ -15,6 +15,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
   const [targetRetention, setTargetRetention] = useState((settings.targetRetention * 100).toString());
   const [autoTranslate, setAutoTranslate] = useState(settings.autoTranslate || false);
   const [targetLanguage, setTargetLanguage] = useState(settings.targetLanguage || 'English');
+  const [answerDisplayMode, setAnswerDisplayMode] = useState<'short' | 'long' | 'both'>(settings.answerDisplayMode || 'long');
   
   const [isSyncing, setIsSyncing] = useState(false);
   const { cards, decks, logs, importCards, saveDecks } = useStorage();
@@ -56,9 +57,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
       }
 
       alert('Data successfully synced to Supabase!');
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      alert('Failed to sync data to cloud: ' + error.message);
+      alert('Failed to sync data to cloud: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setIsSyncing(false);
     }
@@ -109,9 +110,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
       } else {
         alert('No cards found in cloud.');
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      alert('Failed to fetch data from cloud: ' + error.message);
+      alert('Failed to fetch data from cloud: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setIsSyncing(false);
     }
@@ -125,7 +126,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
         ...settings, 
         targetRetention: retention,
         autoTranslate,
-        targetLanguage
+        targetLanguage,
+        answerDisplayMode
       });
       alert('Settings saved successfully!');
     } else {
@@ -182,6 +184,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onSave }) 
               className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-medium text-white"
               required
             />
+          </div>
+        </div>
+
+        <div className="pt-6 border-t border-slate-700 space-y-4">
+          <h3 className="text-lg font-bold text-white">Study Preferences</h3>
+          
+          <div className="space-y-2 pt-2">
+            <label className="text-sm font-bold text-slate-200">
+              Answer Display Mode
+            </label>
+            <p className="text-xs text-slate-400 mb-2">
+              Choose which answer version to display when studying cards.
+            </p>
+            <select
+              value={answerDisplayMode}
+              onChange={(e) => setAnswerDisplayMode(e.target.value as 'short' | 'long' | 'both')}
+              className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-medium text-white"
+            >
+              <option value="long">Long Answer (Default)</option>
+              <option value="short">Short Answer (If available)</option>
+              <option value="both">Both Answers</option>
+            </select>
           </div>
         </div>
 

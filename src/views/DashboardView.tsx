@@ -14,6 +14,7 @@ interface DashboardViewProps {
   onExport: () => void;
   onExportCSV: () => void;
   onImport: (data: Partial<Card>[]) => void;
+  onCustomStudy: (query: string) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ 
@@ -24,7 +25,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onSmartStart,
   onExport,
   onExportCSV,
-  onImport
+  onImport,
+  onCustomStudy
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -169,10 +171,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           onClick={() => {
             const query = prompt("Enter custom query (e.g. 'tag:anatomy due:7d'):");
             if (query) {
-              // We will handle this in App.tsx by passing a new prop or using an event
-              // For now, let's just dispatch a custom event that App.tsx can listen to, or add a prop.
-              // Since we can't easily add a prop without changing App.tsx, let's just use window.dispatchEvent
-              window.dispatchEvent(new CustomEvent('custom-study', { detail: query }));
+              onCustomStudy(query);
             }
           }}
           className="w-full group relative overflow-hidden bg-slate-800 text-white p-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all active:scale-[0.99] border border-slate-700 hover:border-slate-600"

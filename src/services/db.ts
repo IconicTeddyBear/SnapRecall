@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { Card, Deck, ReviewLog } from '../models/types';
+import { Card, Deck, ReviewLog, UserSettings } from '../models/types';
 
 interface FlashcardsDB extends DBSchema {
   cards: {
@@ -26,7 +26,7 @@ interface FlashcardsDB extends DBSchema {
   };
   settings: {
     key: string;
-    value: any;
+    value: { key: string; value: UserSettings };
   };
 }
 
@@ -238,13 +238,13 @@ export class DatabaseService {
     return null;
   }
 
-  async getSettings(): Promise<any> {
+  async getSettings(): Promise<UserSettings> {
     const db = await this.dbPromise;
     const settings = await db.get('settings', 'user');
     return settings?.value || { targetRetention: 0.90 };
   }
 
-  async saveSettings(settings: any) {
+  async saveSettings(settings: UserSettings) {
     const db = await this.dbPromise;
     return db.put('settings', { key: 'user', value: settings });
   }

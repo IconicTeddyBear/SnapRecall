@@ -19,6 +19,7 @@ interface EditorViewProps {
 export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initialTags, initialCategory, onSave, onCancel }) => {
   const [front, setFront] = useState(card?.front || '');
   const [back, setBack] = useState(card?.back || '');
+  const [backShort, setBackShort] = useState(card?.backShort || '');
   const [category, setCategory] = useState(card?.category || initialCategory || '');
   const [frontImage, setFrontImage] = useState(card?.frontImage || '');
   const [backImage, setBackImage] = useState(card?.backImage || '');
@@ -71,6 +72,7 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
       id: card?.id,
       front,
       back,
+      backShort: backShort || undefined,
       category: category.trim() || undefined,
       frontImage,
       backImage,
@@ -202,13 +204,25 @@ export const EditorView: React.FC<EditorViewProps> = ({ card, categories, initia
         {/* Back Section */}
         <div className="space-y-4 bg-slate-800 p-6 rounded-3xl border border-slate-700 shadow-sm">
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Back Content</label>
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Back Content (Long Answer)</label>
             {showPreview ? renderPreview(back) : (
               <textarea
                 value={back}
                 onChange={(e) => setBack(e.target.value)}
                 placeholder="Enter raw Markdown or LaTeX here..."
                 className="w-full min-h-[150px] p-4 bg-slate-900 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all resize-y font-mono text-sm text-white placeholder-slate-500"
+              />
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Short Answer (Optional)</label>
+            {showPreview ? renderPreview(backShort) : (
+              <textarea
+                value={backShort}
+                onChange={(e) => setBackShort(e.target.value)}
+                placeholder="Enter a short version of the answer..."
+                className="w-full min-h-[80px] p-4 bg-slate-900 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all resize-y font-mono text-sm text-white placeholder-slate-500"
               />
             )}
           </div>

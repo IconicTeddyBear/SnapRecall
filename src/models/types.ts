@@ -2,6 +2,7 @@ export interface Card {
   id: string;
   front: string;
   back: string;
+  backShort?: string;
   frontImage?: string; // base64 or URL
   backImage?: string; // base64 or URL
   frontTranslation?: string;
@@ -53,4 +54,5 @@ export interface UserSettings {
   targetRetention: number; // e.g. 0.90 for 90%
   autoTranslate?: boolean;
   targetLanguage?: string;
+  answerDisplayMode?: 'short' | 'long' | 'both';
 }

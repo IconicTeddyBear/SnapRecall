@@ -2,11 +2,12 @@ import { Card } from '../models/types';
 
 export const csvUtils = {
   generateCSV: (cards: Card[]): string => {
-    const header = 'id,front,back,category,tags,front_image,back_image,front_translation,back_translation\n';
+    const header = 'id,front,back,back_short,category,tags,front_image,back_image,front_translation,back_translation\n';
     const rows = cards.map(card => {
       const id = card.id;
       const front = `"${card.front.replace(/"/g, '""')}"`;
       const back = `"${card.back.replace(/"/g, '""')}"`;
+      const backShort = `"${(card.backShort || '').replace(/"/g, '""')}"`;
       const category = `"${(card.category || '').replace(/"/g, '""')}"`;
       // Use semicolon for tags to avoid conflict with comma separator
       const tags = `"${card.tags.join(';').replace(/"/g, '""')}"`;
@@ -14,7 +15,7 @@ export const csvUtils = {
       const backImage = `"${(card.backImage || '').replace(/"/g, '""')}"`;
       const frontTranslation = `"${(card.frontTranslation || '').replace(/"/g, '""')}"`;
       const backTranslation = `"${(card.backTranslation || '').replace(/"/g, '""')}"`;
-      return `${id},${front},${back},${category},${tags},${frontImage},${backImage},${frontTranslation},${backTranslation}`;
+      return `${id},${front},${back},${backShort},${category},${tags},${frontImage},${backImage},${frontTranslation},${backTranslation}`;
     }).join('\n');
     return header + rows;
   },
@@ -27,6 +28,7 @@ export const csvUtils = {
     const idIdx = headers.indexOf('id');
     const frontIdx = headers.indexOf('front');
     const backIdx = headers.indexOf('back');
+    const backShortIdx = headers.indexOf('back_short');
     const categoryIdx = headers.indexOf('category');
     const tagsIdx = headers.indexOf('tags');
     const frontImgIdx = headers.indexOf('front_image');
@@ -79,6 +81,7 @@ export const csvUtils = {
         };
 
         if (idIdx !== -1 && parts[idIdx]) card.id = parts[idIdx];
+        if (backShortIdx !== -1 && parts[backShortIdx]) card.backShort = parts[backShortIdx];
         if (categoryIdx !== -1 && parts[categoryIdx]) card.category = parts[categoryIdx];
         if (frontImgIdx !== -1 && parts[frontImgIdx]) card.frontImage = parts[frontImgIdx];
         if (backImgIdx !== -1 && parts[backImgIdx]) card.backImage = parts[backImgIdx];

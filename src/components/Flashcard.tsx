@@ -9,11 +9,13 @@ import DOMPurify from 'dompurify';
 interface FlashcardProps {
   front: string;
   back: string;
+  backShort?: string;
   frontImage?: string;
   backImage?: string;
   frontTranslation?: string;
   backTranslation?: string;
   showTranslation?: boolean;
+  answerDisplayMode?: 'short' | 'long' | 'both';
   isFlipped: boolean;
   onFlip: () => void;
   onGrade?: (quality: number) => void; // 1=Again, 2=Hard, 3=Neutral, 4=Good, 5=Easy
@@ -22,11 +24,13 @@ interface FlashcardProps {
 export const Flashcard: React.FC<FlashcardProps> = ({ 
   front, 
   back, 
+  backShort,
   frontImage, 
   backImage, 
   frontTranslation,
   backTranslation,
   showTranslation,
+  answerDisplayMode = 'long',
   isFlipped, 
   onFlip, 
   onGrade 
@@ -68,7 +72,17 @@ export const Flashcard: React.FC<FlashcardProps> = ({
   };
 
   const displayFront = showTranslation && frontTranslation ? frontTranslation : front;
-  const displayBack = showTranslation && backTranslation ? backTranslation : back;
+  
+  let displayBack = back;
+  if (showTranslation && backTranslation) {
+    displayBack = backTranslation;
+  } else {
+    if (answerDisplayMode === 'short' && backShort) {
+      displayBack = backShort;
+    } else if (answerDisplayMode === 'both' && backShort) {
+      displayBack = `**Short Answer:**\n${backShort}\n\n---\n\n**Long Answer:**\n${back}`;
+    }
+  }
 
   return (
     <div 

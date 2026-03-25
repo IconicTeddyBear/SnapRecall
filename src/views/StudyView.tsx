@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'motion/react';
-import { Card } from '../models/types';
+import { Card, UserSettings } from '../models/types';
 import { Flashcard } from '../components/Flashcard';
 import { X, ChevronLeft, ChevronRight, Trash2, AlertCircle, Undo2, Plus, Languages, Loader2 } from 'lucide-react';
 import { translateCard } from '../utils/aiTranslator';
 
 interface StudyViewProps {
   cards: Card[];
+  settings: UserSettings;
   onGrade: (card: Card, quality: number) => void;
   onDelete: (cardId: string) => void;
   onUndo: () => boolean;
@@ -15,7 +16,7 @@ interface StudyViewProps {
   onAddCard: () => void;
 }
 
-export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, onUndo, onUpdateCard, onFinish, onAddCard }) => {
+export const StudyView: React.FC<StudyViewProps> = ({ cards, settings, onGrade, onDelete, onUndo, onUpdateCard, onFinish, onAddCard }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [direction, setDirection] = useState(0);
@@ -27,7 +28,7 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
   const currentCard = cards[currentIndex];
 
   useEffect(() => {
-    let timer: any;
+    let timer: ReturnType<typeof setTimeout>;
     if (showUndoToast) {
       timer = setTimeout(() => setShowUndoToast(false), 5000);
     }
@@ -81,7 +82,7 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
     }
   };
 
-  const handleDragEnd = (event: any, info: PanInfo) => {
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const threshold = 100;
     const velocityThreshold = 500;
 
@@ -191,11 +192,13 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, onGrade, onDelete, 
             <Flashcard 
               front={currentCard.front} 
               back={currentCard.back} 
+              backShort={currentCard.backShort}
               frontImage={currentCard.frontImage}
               backImage={currentCard.backImage}
               frontTranslation={currentCard.frontTranslation}
               backTranslation={currentCard.backTranslation}
               showTranslation={showTranslation}
+              answerDisplayMode={settings.answerDisplayMode}
               isFlipped={isFlipped}
               onFlip={() => setIsFlipped(!isFlipped)}
               onGrade={isFlipped ? handleGrade : undefined}

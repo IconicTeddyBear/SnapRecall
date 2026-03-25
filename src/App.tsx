@@ -76,6 +76,14 @@ function MainApp() {
     const newCard: Card = {
       ...card,
       id: crypto.randomUUID(),
+      due: Date.now(),
+      stability: 0,
+      difficulty: 0,
+      elapsed_days: 0,
+      scheduled_days: 0,
+      reps: 0,
+      lapses: 0,
+      state: 0,
       repetition: 0,
       interval: 0,
       easiness: 2.5,
@@ -140,50 +148,44 @@ function MainApp() {
     alert(`Translated ${successCount} out of ${cardsToTranslate.length} cards.`);
   };
 
-  React.useEffect(() => {
-    const handleCustomStudy = (e: Event) => {
-      const query = (e as CustomEvent).detail as string;
-      const terms = query.toLowerCase().split(' ');
-      
-      let filteredCards = cards;
-      
-      for (const term of terms) {
-        if (term.startsWith('tag:')) {
-          const tag = term.split(':')[1];
-          filteredCards = filteredCards.filter(c => c.tags.some(t => t.toLowerCase().includes(tag)));
-        } else if (term.startsWith('due:')) {
-          const daysStr = term.split(':')[1].replace('d', '');
-          const days = parseInt(daysStr, 10);
-          if (!isNaN(days)) {
-            const targetTime = Date.now() + days * 24 * 60 * 60 * 1000;
-            filteredCards = filteredCards.filter(c => (c.due || c.nextReviewDate || 0) <= targetTime);
-          }
-        } else if (term.startsWith('wrong:')) {
-          const daysStr = term.split(':')[1].replace('d', '');
-          const days = parseInt(daysStr, 10);
-          if (!isNaN(days)) {
-            const targetTime = Date.now() - days * 24 * 60 * 60 * 1000;
-            const wrongCardIds = new Set(
-              logs.filter(l => l.quality <= 2 && l.timestamp >= targetTime).map(l => l.cardId)
-            );
-            filteredCards = filteredCards.filter(c => wrongCardIds.has(c.id));
-          }
+  const handleCustomStudy = (query: string) => {
+    const terms = query.toLowerCase().split(' ');
+    
+    let filteredCards = cards;
+    
+    for (const term of terms) {
+      if (term.startsWith('tag:')) {
+        const tag = term.split(':')[1];
+        filteredCards = filteredCards.filter(c => c.tags.some(t => t.toLowerCase().includes(tag)));
+      } else if (term.startsWith('due:')) {
+        const daysStr = term.split(':')[1].replace('d', '');
+        const days = parseInt(daysStr, 10);
+        if (!isNaN(days)) {
+          const targetTime = Date.now() + days * 24 * 60 * 60 * 1000;
+          filteredCards = filteredCards.filter(c => (c.due || c.nextReviewDate || 0) <= targetTime);
+        }
+      } else if (term.startsWith('wrong:')) {
+        const daysStr = term.split(':')[1].replace('d', '');
+        const days = parseInt(daysStr, 10);
+        if (!isNaN(days)) {
+          const targetTime = Date.now() - days * 24 * 60 * 60 * 1000;
+          const wrongCardIds = new Set(
+            logs.filter(l => l.quality <= 2 && l.timestamp >= targetTime).map(l => l.cardId)
+          );
+          filteredCards = filteredCards.filter(c => wrongCardIds.has(c.id));
         }
       }
+    }
 
-      if (filteredCards.length > 0) {
-        setActiveDeckId(null);
-        setStudyMode('normal');
-        setStudyQueue(deckUtils.getWeightedCards(filteredCards));
-        setCurrentView('study');
-      } else {
-        alert("No cards found matching your query.");
-      }
-    };
-
-    window.addEventListener('custom-study', handleCustomStudy);
-    return () => window.removeEventListener('custom-study', handleCustomStudy);
-  }, [cards, logs]);
+    if (filteredCards.length > 0) {
+      setActiveDeckId(null);
+      setStudyMode('normal');
+      setStudyQueue(deckUtils.getWeightedCards(filteredCards));
+      setCurrentView('study');
+    } else {
+      alert("No cards found matching your query.");
+    }
+  };
 
   const handleGradeCard = (card: Card, quality: number) => {
     const { updatedCard, log } = calculateNextReview(card, quality, settings);
@@ -241,6 +243,7 @@ function MainApp() {
         id: crypto.randomUUID(),
         front: cardData.front || '',
         back: cardData.back || '',
+        backShort: cardData.backShort,
         category: cardData.category,
         frontImage: cardData.frontImage,
         backImage: cardData.backImage,
@@ -324,6 +327,7 @@ function MainApp() {
             onExport={handleExportCards}
             onExportCSV={handleExportCSV}
             onImport={handleImportCards}
+            onCustomStudy={handleCustomStudy}
           />
         );
       case 'decks':
@@ -358,6 +362,7 @@ function MainApp() {
         return (
           <StudyView 
             cards={studyQueue}
+            settings={settings}
             onGrade={handleGradeCard}
             onDelete={handleDeleteCard}
             onUndo={handleUndoDelete}
