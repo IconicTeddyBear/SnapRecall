@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useT } from '../i18n/useT';
 import { Card, Deck } from '../models/types';
-import { ChevronRight, Folder, Play, BookOpen, Plus, Search, Zap, Copy, Trash2, Languages, Loader2, X, Check } from 'lucide-react';
+import { ChevronRight, Folder, Play, BookOpen, Plus, Search, Zap, Copy, Trash2, Languages, Loader2, X, Check, Download, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Flashcard } from '../components/Flashcard';
 
@@ -18,6 +19,8 @@ interface DecksViewProps {
   onSelectCategory: (category: string | null) => void;
   onTranslateCategory?: (category: string) => void;
   translatingCategory?: string | null;
+  onExportDeck?: (category: string) => void;
+  onImportDeck?: (file: File) => void;
 }
 
 export const DecksView: React.FC<DecksViewProps> = ({
@@ -34,13 +37,17 @@ export const DecksView: React.FC<DecksViewProps> = ({
   onSelectCategory,
   onTranslateCategory,
   translatingCategory,
+  onExportDeck,
+  onImportDeck,
 }) => {
+  const t = useT();
   const [searchQuery, setSearchQuery] = useState('');
   const [previewCard, setPreviewCard] = useState<Card | null>(null);
   const [isPreviewFlipped, setIsPreviewFlipped] = useState(false);
   const [creatingDeck, setCreatingDeck] = useState(false);
   const [newDeckName, setNewDeckName] = useState('');
   const newDeckInputRef = useRef<HTMLInputElement>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (creatingDeck) newDeckInputRef.current?.focus();
@@ -66,7 +73,9 @@ export const DecksView: React.FC<DecksViewProps> = ({
 
   const selectedCategoryCards = useMemo(() => {
     if (!selectedCategory) return [];
-    return cards.filter(c => (c.category || 'Uncategorized') === selectedCategory);
+    return cards
+      .filter(c => (c.category || 'Uncategorized') === selectedCategory)
+      .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
   }, [cards, selectedCategory]);
 
   const filteredCards = useMemo(() => {
@@ -84,23 +93,45 @@ export const DecksView: React.FC<DecksViewProps> = ({
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Library</h2>
-          <p className="text-slate-400 text-sm">Browse your collection by category and tag.</p>
+          <h2 className="text-2xl font-bold text-white">{t.library.title}</h2>
+          <p className="text-slate-400 text-sm">{t.library.subtitle}</p>
         </div>
         <div className="flex items-center gap-2">
+          {onImportDeck && (
+            <>
+              <button
+                onClick={() => importFileRef.current?.click()}
+                className="flex items-center gap-2 bg-slate-700 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-slate-600 transition-all border border-slate-600 text-sm"
+                title="Import a deck from a .snaprecall file"
+              >
+                <Upload size={16} />
+                {t.library.importDeck}
+              </button>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".snaprecall,.json"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) { onImportDeck(file); e.target.value = ''; }
+                }}
+              />
+            </>
+          )}
           <button
             onClick={() => onCreateCard(undefined, selectedCategory || undefined)}
             className="flex items-center gap-2 bg-slate-700 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-slate-600 transition-all border border-slate-600 text-sm"
           >
             <Plus size={16} />
-            New Card
+            {t.library.newCard}
           </button>
           <button
             onClick={() => onStudyDeck('default')}
             className="flex items-center gap-2 bg-violet-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-violet-500 transition-all shadow-lg shadow-violet-500/20 active:scale-95 text-sm"
           >
             <Play size={16} fill="currentColor" />
-            Study All ({dueCardsCount} Due)
+            {t.library.studyAll} ({dueCardsCount} Due)
           </button>
         </div>
       </div>
@@ -109,13 +140,13 @@ export const DecksView: React.FC<DecksViewProps> = ({
         {/* Categories List (Sidebar) */}
         <div className="lg:col-span-4 space-y-4 overflow-y-auto pr-2">
           <div className="flex items-center justify-between sticky top-0 bg-slate-950 py-2 z-10">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Categories</h3>
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.library.categories}</h3>
             <button
               onClick={() => setCreatingDeck(true)}
               className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-violet-400 transition-colors"
             >
               <Plus size={14} />
-              New Deck
+              {t.library.newDeck}
             </button>
           </div>
 
@@ -138,7 +169,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                       if (e.key === 'Enter') handleCreateDeck();
                       if (e.key === 'Escape') { setCreatingDeck(false); setNewDeckName(''); }
                     }}
-                    placeholder="Deck name…"
+                    placeholder={t.library.deckNamePlaceholder}
                     className="flex-1 px-3 py-2 bg-slate-800 border border-slate-600 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   />
                   <button
@@ -177,7 +208,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                   <div className="truncate">
                     <p className="font-bold truncate">{cat}</p>
                     <p className={`text-[10px] font-bold uppercase tracking-tight truncate ${selectedCategory === cat ? 'text-violet-200' : 'text-slate-500'}`}>
-                      {tags.size} Tags • {cards.filter(c => (c.category || 'Uncategorized') === cat).length} Cards
+                      {tags.size} {t.library.tags} • {cards.filter(c => (c.category || 'Uncategorized') === cat).length} {t.library.cards}
                     </p>
                   </div>
                 </div>
@@ -204,7 +235,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                     <div>
                       <h3 className="text-xl font-bold text-white">{selectedCategory}</h3>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                        {selectedCategoryCards.length} Cards • {selectedCategoryCards.filter(c => c.due <= Date.now()).length} Due
+                        {selectedCategoryCards.length} {t.library.cards} • {selectedCategoryCards.filter(c => c.due <= Date.now()).length} {t.library.due}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -213,8 +244,18 @@ export const DecksView: React.FC<DecksViewProps> = ({
                         className="flex items-center gap-2 bg-slate-700 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-600 transition-all border border-slate-600"
                       >
                         <Plus size={16} />
-                        Add Card
+                        {t.library.addCard}
                       </button>
+                      {onExportDeck && (
+                        <button
+                          onClick={() => selectedCategory && onExportDeck(selectedCategory)}
+                          className="flex items-center gap-2 bg-slate-600/30 text-slate-300 px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-600/50 transition-all border border-slate-600/30"
+                          title="Export this deck as a .snaprecall file"
+                        >
+                          <Download size={16} />
+                          {t.library.export}
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           if (selectedCategory && onTranslateCategory) onTranslateCategory(selectedCategory);
@@ -223,7 +264,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                         className="flex items-center gap-2 bg-blue-500/10 text-blue-400 px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-500/20 transition-all border border-blue-500/20 disabled:opacity-50"
                       >
                         {translatingCategory === selectedCategory ? <Loader2 size={16} className="animate-spin" /> : <Languages size={16} />}
-                        Translate
+                        {t.library.translate}
                       </button>
                       <button
                         onClick={() => {
@@ -232,7 +273,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                         className="flex items-center gap-2 bg-rose-500/10 text-rose-400 px-4 py-2 rounded-xl text-xs font-bold hover:bg-rose-500/20 transition-all border border-rose-500/20"
                       >
                         <Zap size={16} />
-                        Weak Points
+                        {t.library.weakPoints}
                       </button>
                       <button
                         onClick={() => {
@@ -241,7 +282,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                         className="flex items-center gap-2 bg-violet-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-violet-500 transition-all shadow-lg shadow-violet-500/20"
                       >
                         <Play size={16} fill="currentColor" />
-                        Study Category
+                        {t.library.studyCategory}
                       </button>
                     </div>
                   </div>
@@ -253,7 +294,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder={`Search in ${selectedCategory}...`}
+                      placeholder={`${t.library.searchPlaceholder} ${selectedCategory}...`}
                       className="w-full pl-10 pr-4 py-3 bg-slate-900 border border-slate-700 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-medium text-sm text-white placeholder-slate-500"
                     />
                   </div>
@@ -290,7 +331,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                                 card.interval > 7 ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
                                 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
                               }`}>
-                                {card.interval > 21 ? 'Mastered' : card.interval > 7 ? 'Learning' : 'New'}
+                                {card.interval > 21 ? t.library.mastered : card.interval > 7 ? t.library.learning : t.library.new}
                               </span>
                               <div className="flex gap-2 mt-2">
                                 <button 
@@ -302,7 +343,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                                   className="text-[10px] font-bold text-slate-500 hover:text-white uppercase tracking-tight transition-colors"
                                   title="Preview"
                                 >
-                                  Preview
+                                  {t.library.preview}
                                 </button>
                                 <button 
                                   onClick={(e) => {
@@ -312,7 +353,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                                   className="text-[10px] font-bold text-slate-500 hover:text-white uppercase tracking-tight transition-colors"
                                   title="Edit"
                                 >
-                                  Edit
+                                  {t.library.edit}
                                 </button>
                                 <button 
                                   onClick={(e) => {
@@ -344,7 +385,7 @@ export const DecksView: React.FC<DecksViewProps> = ({
                     </div>
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                      <p className="text-slate-500 font-medium text-sm">No cards found.</p>
+                      <p className="text-slate-500 font-medium text-sm">{t.library.noCards}</p>
                     </div>
                   )}
                 </div>
@@ -352,8 +393,8 @@ export const DecksView: React.FC<DecksViewProps> = ({
             ) : (
               <div className="h-full flex flex-col items-center justify-center p-12 text-center">
                 <BookOpen size={48} className="text-slate-600 mb-4" />
-                <h3 className="text-xl font-bold text-white mb-2">Select a Category</h3>
-                <p className="text-slate-400 font-medium max-w-xs">Choose a category from the left to browse cards, manage your deck, and start studying.</p>
+                <h3 className="text-xl font-bold text-white mb-2">{t.library.selectCategory}</h3>
+                <p className="text-slate-400 font-medium max-w-xs">{t.library.selectCategoryDesc}</p>
               </div>
             )}
           </AnimatePresence>

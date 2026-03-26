@@ -55,4 +55,5 @@ export interface UserSettings {
   autoTranslate?: boolean;
   targetLanguage?: string;
   answerDisplayMode?: 'short' | 'long' | 'both';
+  uiLanguage?: 'en' | 'de';
 }

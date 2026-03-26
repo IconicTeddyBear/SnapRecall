@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import { format, subDays, startOfDay, eachDayOfInterval, isSameDay } from 'date-fns';
 import { Flame, Target, BarChart3, Calendar, Filter } from 'lucide-react';
+import { useT } from '../i18n/useT';
 
 interface AnalyticsViewProps {
   cards: Card[];
@@ -14,6 +15,7 @@ interface AnalyticsViewProps {
 }
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ cards, logs }) => {
+  const t = useT();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const categories = useMemo(() => {
@@ -96,8 +98,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ cards, logs }) => 
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white">Study Analytics</h2>
-          <p className="text-slate-400 text-sm">Track your progress and retention over time.</p>
+          <h2 className="text-2xl font-bold text-white">{t.analytics.title}</h2>
+          <p className="text-slate-400 text-sm">{t.analytics.subtitle}</p>
         </div>
         
         <div className="relative min-w-[200px]">
@@ -107,7 +109,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ cards, logs }) => 
             onChange={(e) => setSelectedCategory(e.target.value)}
             className="w-full pl-10 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-2xl focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none transition-all font-bold text-xs uppercase tracking-widest appearance-none shadow-sm cursor-pointer text-white"
           >
-            <option value="all">All Categories</option>
+            <option value="all">{t.analytics.allCategories}</option>
             {categories.map(cat => (
               <option key={cat} value={cat as string}>{cat}</option>
             ))}
@@ -122,7 +124,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ cards, logs }) => 
             <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
               <Target size={20} />
             </div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Retention (7d)</span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.analytics.retentionWeek}</span>
           </div>
           <p className="text-3xl font-bold text-white">{averageRetention}%</p>
         </div>
@@ -131,7 +133,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ cards, logs }) => 
             <div className="p-2 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
               <BarChart3 size={20} />
             </div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Reviews</span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.analytics.totalReviews}</span>
           </div>
           <p className="text-3xl font-bold text-white">{logs.length}</p>
         </div>
@@ -140,7 +142,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ cards, logs }) => 
             <div className="p-2 bg-orange-500/10 text-orange-400 rounded-xl border border-orange-500/20">
               <Flame size={20} />
             </div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Current Streak</span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.analytics.currentStreak}</span>
           </div>
           <p className="text-3xl font-bold text-white">{deckUtils.getStreak(logs)}d</p>
         </div>
@@ -149,7 +151,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ cards, logs }) => 
             <div className="p-2 bg-slate-700 text-slate-300 rounded-xl border border-slate-600">
               <Calendar size={20} />
             </div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Mastered</span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.analytics.mastered}</span>
           </div>
           <p className="text-3xl font-bold text-white">{cards.filter(c => c.interval > 21).length}</p>
         </div>
@@ -157,7 +159,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ cards, logs }) => 
 
       {/* Retention Chart */}
       <div className="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-sm">
-        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">Retention Rate (%)</h3>
+        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">{t.analytics.retentionRate} (%)</h3>
         <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <LineChart data={retentionData}>
@@ -196,16 +198,16 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ cards, logs }) => 
         {/* Heatmap */}
         <div className="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-sm">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Activity Heatmap</h3>
+            <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">{t.analytics.activityHeatmap}</h3>
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-slate-500 font-bold uppercase">Less</span>
+              <span className="text-[10px] text-slate-500 font-bold uppercase">{t.analytics.less}</span>
               <div className="flex gap-1">
                 <div className="w-3 h-3 rounded-sm bg-slate-700" />
                 <div className="w-3 h-3 rounded-sm bg-slate-600" />
                 <div className="w-3 h-3 rounded-sm bg-slate-500" />
                 <div className="w-3 h-3 rounded-sm bg-violet-500" />
               </div>
-              <span className="text-[10px] text-slate-500 font-bold uppercase">More</span>
+              <span className="text-[10px] text-slate-500 font-bold uppercase">{t.analytics.more}</span>
             </div>
           </div>
           <div className="grid grid-flow-col grid-rows-7 gap-1.5">
@@ -227,13 +229,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ cards, logs }) => 
           <div className="flex justify-between mt-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
             <span>{format(subDays(new Date(), 83), 'MMM')}</span>
             <span>{format(subDays(new Date(), 42), 'MMM')}</span>
-            <span>Today</span>
+            <span>{t.analytics.today}</span>
           </div>
         </div>
 
         {/* SRS Distribution */}
         <div className="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">SRS Distribution</h3>
+          <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">{t.analytics.srsDistribution}</h3>
           <div className="h-[200px] w-full">
             <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart data={distributionData}>

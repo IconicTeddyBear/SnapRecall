@@ -35,6 +35,7 @@
     "react-simple-wysiwyg": "^3.4.1",
     "recharts": "^3.7.0",
     "rehype-katex": "^7.0.1",
+    "remark-breaks": "^4.0.0",
     "remark-math": "^6.0.0",
     "ts-fsrs": "^5.2.3",
     "vite": "^6.2.0"

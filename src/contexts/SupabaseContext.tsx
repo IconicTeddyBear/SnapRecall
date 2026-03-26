@@ -7,20 +7,17 @@ import { User } from '@supabase/supabase-js';
 export interface SupabaseDeck {
   id: string;
   user_id: string;
-  title: string;
-  description: string | null;
+  name: string;
   tags: string[];
-  created_at_ms: number;
-  created_at: string;
+  created_at: number;
 }
 
 export interface SupabaseCard {
   id: string;
-  deck_id: string | null;
   user_id: string;
   // Content
-  front_content: string;
-  back_content: string;
+  front: string;
+  back: string;
   back_short: string | null;
   category: string | null;
   tags: string[];
@@ -30,7 +27,7 @@ export interface SupabaseCard {
   back_translation: string | null;
   // FSRS scheduling
   stability: number;
-  difficulty_fsrs: number;
+  difficulty: number;
   elapsed_days: number;
   scheduled_days: number;
   reps: number;
@@ -38,18 +35,15 @@ export interface SupabaseCard {
   state: number;
   last_review: number | null;
   due: number;
+  next_review_date: number | null;
   // Legacy SM-2
   repetition: number;
   interval_days: number;
   easiness: number;
-  difficulty_score: number;
+  difficulty_score: number | null;
   // Timestamps
-  created_at_ms: number;
+  created_at: number;
   updated_at: number;
-  // Original columns (kept for back-compat with migration 00001)
-  difficulty_level: number;
-  next_review_date: string;
-  created_at: string;
 }
 
 export interface SupabaseReviewLog {

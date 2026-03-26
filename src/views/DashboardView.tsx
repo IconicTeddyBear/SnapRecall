@@ -4,6 +4,7 @@ import { deckUtils } from '../utils/deckUtils';
 import { csvUtils } from '../utils/csvUtils';
 import { StatCard } from '../components/StatCard';
 import { Flame, BookOpen, CheckCircle2, Zap, Trophy, Download, Upload } from 'lucide-react';
+import { useT } from '../i18n/useT';
 
 interface DashboardViewProps {
   cards: Card[];
@@ -28,6 +29,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onImport,
   onCustomStudy
 }) => {
+  const t = useT();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,8 +90,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <section>
         <div className="flex justify-between items-end mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Welcome back!</h1>
-            <p className="text-slate-400 mt-1">Ready to crush your goals today?</p>
+            <h1 className="text-3xl font-bold text-white tracking-tight">{t.dashboard.greeting}</h1>
+            <p className="text-slate-400 mt-1">{t.dashboard.greetingSubtitle}</p>
           </div>
           <div className="flex gap-2">
             <input 
@@ -104,16 +106,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="flex items-center gap-2 bg-slate-800 text-slate-200 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-700 transition-all border border-slate-700"
             >
               <Upload size={16} />
-              Import
+              {t.dashboard.importCards}
             </button>
-            <button 
+            <button
               onClick={onExport}
               className="flex items-center gap-2 bg-slate-800 text-slate-200 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-700 transition-all border border-slate-700"
             >
               <Download size={16} />
               JSON
             </button>
-            <button 
+            <button
               onClick={onExportCSV}
               className="flex items-center gap-2 bg-slate-800 text-slate-200 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-700 transition-all border border-slate-700"
             >
@@ -123,23 +125,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatCard 
-            label="Due Today" 
-            value={dueCards.length} 
-            icon={BookOpen} 
-            colorClass="bg-blue-500/10 text-blue-400 border border-blue-500/20" 
+          <StatCard
+            label={t.dashboard.dueToday}
+            value={dueCards.length}
+            icon={BookOpen}
+            colorClass="bg-blue-500/10 text-blue-400 border border-blue-500/20"
           />
-          <StatCard 
-            label="Day Streak" 
-            value={streak} 
-            icon={Flame} 
-            colorClass="bg-orange-500/10 text-orange-400 border border-orange-500/20" 
+          <StatCard
+            label={t.dashboard.streak}
+            value={streak}
+            icon={Flame}
+            colorClass="bg-orange-500/10 text-orange-400 border border-orange-500/20"
           />
-          <StatCard 
-            label="Total Cards" 
-            value={cards.length} 
-            icon={CheckCircle2} 
-            colorClass="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+          <StatCard
+            label={t.dashboard.totalCards}
+            value={cards.length}
+            icon={CheckCircle2}
+            colorClass="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
           />
         </div>
       </section>
@@ -157,11 +159,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="text-left space-y-2">
               <div className="flex items-center gap-2 text-violet-200 font-bold uppercase tracking-widest text-xs">
                 <Zap size={16} className="fill-current" />
-                Recommended for you
+                {t.dashboard.recommendedForYou}
               </div>
-              <h2 className="text-3xl font-bold">Start Focus Session</h2>
+              <h2 className="text-3xl font-bold">{t.dashboard.smartStartTitle}</h2>
               <p className="text-violet-100 max-w-md text-sm">
-                We've selected the best cards for you to review right now based on your retention and due dates.
+                {t.dashboard.smartStartDesc}
               </p>
             </div>
           </div>
@@ -180,11 +182,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="text-left space-y-2">
               <div className="flex items-center gap-2 text-slate-400 font-bold uppercase tracking-widest text-xs">
                 <BookOpen size={16} className="fill-current" />
-                Filtered Session
+                {t.dashboard.filteredSession}
               </div>
-              <h2 className="text-3xl font-bold text-slate-200">Custom Study</h2>
+              <h2 className="text-3xl font-bold text-slate-200">{t.dashboard.customStudy}</h2>
               <p className="text-slate-400 max-w-md text-sm">
-                Create temporary decks based on complex queries like "tag:anatomy due:7d".
+                {t.dashboard.customStudyDesc}
               </p>
             </div>
           </div>
@@ -195,7 +197,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <section>
         <div className="flex items-center gap-2 mb-6">
           <Trophy size={20} className="text-slate-400" />
-          <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Mastery Heatmap</h2>
+          <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">{t.dashboard.masteryHeatmap}</h2>
         </div>
         
         {deckMasteryData.length > 0 ? (
@@ -208,20 +210,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 <div className="flex justify-between items-start">
                   <span className="text-[10px] font-black uppercase tracking-widest opacity-80">
-                    {deck.mastery}% Mastery
+                    {deck.mastery}% {t.dashboard.masteryPercent}
                   </span>
                   {deck.mastery >= 80 && <CheckCircle2 size={16} className="opacity-80" />}
                 </div>
                 <div>
                   <h3 className="font-bold text-lg leading-tight mb-1 line-clamp-2">{deck.name}</h3>
-                  <p className="text-xs font-medium opacity-80">{deck.cardCount} cards</p>
+                  <p className="text-xs font-medium opacity-80">{deck.cardCount} {t.dashboard.cards}</p>
                 </div>
               </div>
             ))}
           </div>
         ) : (
           <div className="bg-slate-800 border-2 border-dashed border-slate-700 rounded-2xl p-12 text-center">
-            <p className="text-slate-400 font-medium">Create decks to see your mastery map!</p>
+            <p className="text-slate-400 font-medium">{t.dashboard.noDecks}</p>
           </div>
         )}
       </section>

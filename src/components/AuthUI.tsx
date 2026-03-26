@@ -18,17 +18,25 @@ export const AuthUI: React.FC = () => {
     setError(null);
 
     try {
+      console.log('[Auth] Attempting', isSignUp ? 'sign-up' : 'sign-in', 'for', email);
+      console.log('[Auth] Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+      console.log('[Auth] Key prefix:', (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '').slice(0, 20) + '...');
+
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        console.log('[Auth] signUp result:', { data, error });
         if (error) throw error;
         setJustSignedIn(true);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        console.log('[Auth] signIn result:', { data, error });
         if (error) throw error;
         setJustSignedIn(true);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred during authentication');
+    } catch (err: unknown) {
+      console.error('[Auth] Exception caught:', err);
+      const message = err instanceof Error ? err.message : JSON.stringify(err);
+      setError(message);
     } finally {
       setLoading(false);
     }

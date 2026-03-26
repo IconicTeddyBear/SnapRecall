@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useT } from '../i18n/useT';
 import { motion, AnimatePresence, PanInfo } from 'motion/react';
 import { Card, UserSettings } from '../models/types';
 import { Flashcard } from '../components/Flashcard';
-import { X, ChevronLeft, ChevronRight, Trash2, AlertCircle, Undo2, Plus, Languages, Loader2 } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Trash2, AlertCircle, Undo2, Plus, Languages, Loader2, Pencil } from 'lucide-react';
 import { translateCard } from '../utils/aiTranslator';
 
 interface StudyViewProps {
@@ -14,9 +15,11 @@ interface StudyViewProps {
   onUpdateCard: (card: Card) => void;
   onFinish: () => void;
   onAddCard: () => void;
+  onEditCard: (card: Card) => void;
 }
 
-export const StudyView: React.FC<StudyViewProps> = ({ cards, settings, onGrade, onDelete, onUndo, onUpdateCard, onFinish, onAddCard }) => {
+export const StudyView: React.FC<StudyViewProps> = ({ cards, settings, onGrade, onDelete, onUndo, onUpdateCard, onFinish, onAddCard, onEditCard }) => {
+  const t = useT();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [direction, setDirection] = useState(0);
@@ -99,20 +102,20 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, settings, onGrade, 
         <div className="w-20 h-20 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center">
           <X size={40} />
         </div>
-        <h2 className="text-2xl font-bold text-white">No cards to study!</h2>
-        <p className="text-slate-400 max-w-xs">You've completed all your reviews for this deck. Great job!</p>
+        <h2 className="text-2xl font-bold text-white">{t.study.noCards}</h2>
+        <p className="text-slate-400 max-w-xs">{t.study.noCardsDesc}</p>
         <div className="flex gap-4">
           <button 
             onClick={onFinish}
             className="bg-slate-800 text-white px-8 py-3 rounded-2xl font-bold hover:bg-slate-700 transition-all border border-slate-700"
           >
-            Back to Dashboard
+            {t.study.backToDashboard}
           </button>
           <button 
             onClick={onAddCard}
             className="bg-violet-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-violet-500 transition-all flex items-center gap-2 shadow-lg shadow-violet-500/20"
           >
-            <Plus size={18} /> Add Cards
+            <Plus size={18} /> {t.study.addCards}
           </button>
         </div>
       </div>
@@ -120,7 +123,7 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, settings, onGrade, 
   }
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col items-center gap-12 py-4">
+    <div className="max-w-5xl mx-auto flex flex-col items-center gap-12 py-4">
       {/* Header Info */}
       <div className="w-full flex items-center justify-between px-4">
         <button 
@@ -130,7 +133,7 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, settings, onGrade, 
           <X size={24} />
         </button>
         <div className="flex flex-col items-center">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Session Progress</span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t.study.sessionProgress}</span>
           <div className="flex items-center gap-3 mt-1">
             <div className="w-32 h-1.5 bg-slate-800 rounded-full overflow-hidden">
               <div 
@@ -146,14 +149,14 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, settings, onGrade, 
             onClick={() => setShowTranslation(!showTranslation)}
             disabled={isTranslating}
             className={`p-2 rounded-full transition-colors ${showTranslation ? 'bg-violet-600/20 text-violet-400' : 'hover:bg-slate-800 text-slate-400 hover:text-white'} ${isTranslating ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title="Toggle Translation"
+            title={t.study.toggleTranslation}
           >
             {isTranslating ? <Loader2 size={24} className="animate-spin" /> : <Languages size={24} />}
           </button>
           <button 
             onClick={onAddCard}
             className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"
-            title="Add new card to this deck"
+            title={t.study.addCard}
           >
             <Plus size={24} />
           </button>
@@ -204,13 +207,22 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, settings, onGrade, 
               onGrade={isFlipped ? handleGrade : undefined}
             />
             
-            <button 
-              onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-2 text-slate-500 hover:text-rose-500 transition-colors text-xs font-bold uppercase tracking-widest group"
-            >
-              <Trash2 size={14} className="group-hover:scale-110 transition-transform" />
-              Delete Card
-            </button>
+            <div className="flex items-center gap-6">
+              <button
+                onClick={() => onEditCard(currentCard)}
+                className="flex items-center gap-2 text-slate-500 hover:text-violet-400 transition-colors text-xs font-bold uppercase tracking-widest group"
+              >
+                <Pencil size={14} className="group-hover:scale-110 transition-transform" />
+                {t.study.editCard}
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="flex items-center gap-2 text-slate-500 hover:text-rose-500 transition-colors text-xs font-bold uppercase tracking-widest group"
+              >
+                <Trash2 size={14} className="group-hover:scale-110 transition-transform" />
+                {t.study.deleteCard}
+              </button>
+            </div>
           </motion.div>
         </AnimatePresence>
 
@@ -242,21 +254,21 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, settings, onGrade, 
                 <AlertCircle size={32} />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-white">Delete this card?</h3>
-                <p className="text-slate-400 mt-2">This action cannot be undone. All SRS progress for this card will be lost.</p>
+                <h3 className="text-xl font-bold text-white">{t.study.deleteConfirmTitle}</h3>
+                <p className="text-slate-400 mt-2">{t.study.deleteConfirmDesc}</p>
               </div>
               <div className="flex gap-3">
                 <button 
                   onClick={handleDelete}
                   className="flex-1 bg-rose-500 text-white py-3 rounded-2xl font-bold hover:bg-rose-600 transition-all active:scale-95"
                 >
-                  Delete
+                  {t.study.delete}
                 </button>
-                <button 
+                <button
                   onClick={() => setShowDeleteConfirm(false)}
                   className="flex-1 bg-slate-800 text-slate-300 py-3 rounded-2xl font-bold hover:bg-slate-700 transition-all active:scale-95"
                 >
-                  Cancel
+                  {t.study.cancel}
                 </button>
               </div>
             </motion.div>
@@ -275,13 +287,13 @@ export const StudyView: React.FC<StudyViewProps> = ({ cards, settings, onGrade, 
               exit={{ opacity: 0, y: 20 }}
               className="absolute bottom-0 bg-slate-800 text-white px-6 py-3 rounded-2xl shadow-xl flex items-center gap-4 z-50 border border-slate-700"
             >
-              <span className="text-sm font-medium">Card deleted</span>
+              <span className="text-sm font-medium">{t.study.cardDeleted}</span>
               <button 
                 onClick={handleUndo}
                 className="flex items-center gap-2 text-emerald-400 hover:text-emerald-300 font-bold text-sm transition-colors"
               >
                 <Undo2 size={16} />
-                Undo
+                {t.study.undo}
               </button>
               <button 
                 onClick={() => setShowUndoToast(false)}

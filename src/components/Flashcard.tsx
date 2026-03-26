@@ -1,8 +1,10 @@
 import React from 'react';
+import { useT } from '../i18n/useT';
 import { motion } from 'motion/react';
 import { Smile, Meh, Frown, RefreshCcw, Sparkles } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkMath from 'remark-math';
+import remarkBreaks from 'remark-breaks';
 import rehypeKatex from 'rehype-katex';
 import DOMPurify from 'dompurify';
 
@@ -35,6 +37,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
   onFlip, 
   onGrade 
 }) => {
+  const t = useT();
   const getFontSize = (text: string) => {
     // Strip HTML tags for length calculation
     const cleanText = text.replace(/<[^>]*>/g, '');
@@ -64,7 +67,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
 
     return (
       <div className={`markdown-body ${fontSize} font-medium text-white leading-relaxed text-center inline-block w-full max-w-full prose prose-invert prose-p:text-center prose-headings:text-center prose-ul:text-center prose-ol:text-center prose-p:my-2 prose-headings:my-3 prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800`}>
-        <Markdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+        <Markdown remarkPlugins={[remarkMath, remarkBreaks]} rehypePlugins={[rehypeKatex]}>
           {text}
         </Markdown>
       </div>
@@ -97,7 +100,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
         <div className="absolute inset-0 w-full h-full backface-hidden bg-slate-800 rounded-3xl border-2 border-slate-700 shadow-xl flex flex-col overflow-hidden">
           <div className="flex-none pt-6 pb-2 text-center">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
-              {showTranslation && frontTranslation ? 'Question (Translated)' : 'Question'}
+              {showTranslation && frontTranslation ? t.study.questionTranslated : t.study.question}
             </span>
           </div>
           
@@ -114,7 +117,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
           </div>
 
           <div className="flex-none pb-6 pt-4 text-center">
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest animate-pulse">Click to reveal</p>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest animate-pulse">{t.study.clickToReveal}</p>
           </div>
         </div>
 
@@ -122,7 +125,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
         <div className="absolute inset-0 w-full h-full backface-hidden bg-slate-900 rounded-3xl border-2 border-slate-800 shadow-xl flex flex-col overflow-hidden rotate-y-180">
           <div className="flex-none pt-6 pb-2 text-center">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
-              {showTranslation && backTranslation ? 'Answer (Translated)' : 'Answer'}
+              {showTranslation && backTranslation ? t.study.answerTranslated : t.study.answer}
             </span>
           </div>
 
@@ -149,7 +152,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                   <div className="p-2 bg-rose-500/10 text-rose-500 rounded-full group-hover/btn:bg-rose-500 group-hover/btn:text-white transition-colors border border-rose-500/20">
                     <RefreshCcw size={18} />
                   </div>
-                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">Again</span>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">{t.study.again}</span>
                 </button>
 
                 <button
@@ -159,7 +162,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                   <div className="p-2 bg-orange-500/10 text-orange-500 rounded-full group-hover/btn:bg-orange-500 group-hover/btn:text-white transition-colors border border-orange-500/20">
                     <Frown size={18} />
                   </div>
-                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">Hard</span>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">{t.study.hard}</span>
                 </button>
 
                 <button
@@ -169,7 +172,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                   <div className="p-2 bg-amber-500/10 text-amber-500 rounded-full group-hover/btn:bg-amber-500 group-hover/btn:text-white transition-colors border border-amber-500/20">
                     <Meh size={18} />
                   </div>
-                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">Neutral</span>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">{t.study.neutral}</span>
                 </button>
 
                 <button
@@ -179,7 +182,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                   <div className="p-2 bg-blue-500/10 text-blue-500 rounded-full group-hover/btn:bg-blue-500 group-hover/btn:text-white transition-colors border border-blue-500/20">
                     <Smile size={18} />
                   </div>
-                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">Good</span>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">{t.study.good}</span>
                 </button>
 
                 <button
@@ -189,7 +192,7 @@ export const Flashcard: React.FC<FlashcardProps> = ({
                   <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-full group-hover/btn:bg-emerald-500 group-hover/btn:text-white transition-colors border border-emerald-500/20">
                     <Sparkles size={18} />
                   </div>
-                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">Easy</span>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 group-hover/btn:text-slate-300 uppercase tracking-wider">{t.study.easy}</span>
                 </button>
               </div>
             </div>

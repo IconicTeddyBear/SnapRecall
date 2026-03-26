@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useT } from './i18n/useT';
 import { Card, Deck, ReviewLog } from './models/types';
 import { DashboardView } from './views/DashboardView';
 import { EditorView } from './views/EditorView';
@@ -19,6 +20,7 @@ type View = 'dashboard' | 'study' | 'editor' | 'decks' | 'analytics' | 'settings
 function MainApp() {
   const { cards, decks, logs, settings, loading, addCard, updateCard, deleteCard, addLog, importCards, saveSettings, saveDeck, saveDecks } = useStorage();
   const { user } = useSupabase();
+  const t = useT();
 
   // Toast notification when auth state changes
   const [toast, setToast] = useState<string | null>(null);
@@ -51,11 +53,9 @@ function MainApp() {
         const row = {
           id: deck.id,
           user_id: user.id,
-          title: deck.name,
-          description: deck.tags.join(', ') || null,
+          name: deck.name,
           tags: deck.tags,
-          created_at_ms: deck.createdAt,
-          created_at: new Date(deck.createdAt).toISOString(),
+          created_at: deck.createdAt,
         };
         const { error } = await supabase.from('decks').upsert(row);
         if (error) throw error;
@@ -64,9 +64,8 @@ function MainApp() {
         const row = {
           id: card.id,
           user_id: user.id,
-          deck_id: null,
-          front_content: card.front,
-          back_content: card.back,
+          front: card.front,
+          back: card.back,
           back_short: card.backShort ?? null,
           category: card.category ?? null,
           tags: card.tags,
@@ -75,7 +74,7 @@ function MainApp() {
           front_translation: card.frontTranslation ?? null,
           back_translation: card.backTranslation ?? null,
           stability: card.stability,
-          difficulty_fsrs: card.difficulty,
+          difficulty: card.difficulty,
           elapsed_days: card.elapsed_days,
           scheduled_days: card.scheduled_days,
           reps: card.reps,
@@ -83,29 +82,28 @@ function MainApp() {
           state: card.state,
           last_review: card.last_review ?? null,
           due: card.due,
+          next_review_date: card.due || card.nextReviewDate || Date.now(),
           repetition: card.repetition ?? 0,
           interval_days: card.interval ?? 0,
           easiness: card.easiness ?? 2.5,
           difficulty_score: card.difficultyScore ?? 3,
-          created_at_ms: card.createdAt,
+          created_at: card.createdAt,
           updated_at: card.updatedAt,
-          difficulty_level: card.difficultyScore ?? 3,
-          next_review_date: new Date(card.due || card.nextReviewDate || Date.now()).toISOString(),
-          created_at: new Date(card.createdAt).toISOString(),
         };
         const { error } = await supabase.from('cards').upsert(row);
         if (error) throw error;
       }
-      setToast(`Synced ${cards.length} cards to cloud`);
+      setToast(`${cards.length} ${t.common.synced}`);
     } catch (e) {
       console.error('Sync error', e);
-      setToast('Sync failed — check console');
+      setToast(t.common.syncFailed);
     } finally {
       setIsSyncing(false);
     }
   }, [user, isSyncing, decks, cards]);
 
   const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [returnToView, setReturnToView] = useState<View>('decks');
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [editingCard, setEditingCard] = useState<Card | undefined>(undefined);
   const [editorContext, setEditorContext] = useState<{ tags?: string[], category?: string } | undefined>(undefined);
@@ -358,7 +356,8 @@ function MainApp() {
     
     setEditingCard(undefined);
     setEditorContext(undefined);
-    setCurrentView('decks'); // Go back to decks after saving
+    setCurrentView(returnToView);
+    setReturnToView('decks');
   };
 
   const handleCreateNew = (initialTags?: string[], initialCategory?: string) => {
@@ -378,6 +377,53 @@ function MainApp() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const handleExportDeck = (category: string) => {
+    const deckCards = cards.filter(c => (c.category || 'Uncategorized') === category);
+    const exportData = {
+      snaprecall_version: 1,
+      deck_name: category,
+      exported_at: Date.now(),
+      cards: deckCards.map(c => ({
+        front: c.front,
+        back: c.back,
+        backShort: c.backShort,
+        category: c.category,
+        tags: c.tags,
+        frontImage: c.frontImage,
+        backImage: c.backImage,
+        frontTranslation: c.frontTranslation,
+        backTranslation: c.backTranslation,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${category.replace(/\s+/g, '_')}.snaprecall`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportDeck = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        if (!data.snaprecall_version || !Array.isArray(data.cards)) {
+          alert('Invalid deck file. Please use a .snaprecall file exported from Snap Recall.');
+          return;
+        }
+        await importCards(data.cards);
+        setToast(`Imported ${data.cards.length} cards from "${data.deck_name || file.name}"`);
+      } catch {
+        alert('Failed to read deck file. Make sure it is a valid .snaprecall file.');
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleExportCSV = () => {
@@ -444,6 +490,8 @@ function MainApp() {
             onSelectCategory={setDecksCategory}
             onTranslateCategory={handleTranslateCategory}
             translatingCategory={translatingCategory}
+            onExportDeck={handleExportDeck}
+            onImportDeck={handleImportDeck}
           />
         );
       case 'analytics':
@@ -473,6 +521,11 @@ function MainApp() {
                 handleCreateNew();
               }
             }}
+            onEditCard={(card) => {
+              setEditingCard(card);
+              setReturnToView('study');
+              setCurrentView('editor');
+            }}
           />
         );
       case 'editor':
@@ -487,7 +540,8 @@ function MainApp() {
             onCancel={() => {
               setEditingCard(undefined);
               setEditorContext(undefined);
-              setCurrentView('decks');
+              setCurrentView(returnToView);
+              setReturnToView('decks');
             }}
           />
         );
@@ -511,7 +565,7 @@ function MainApp() {
       )}
 
       <header className="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div
             className="flex items-center gap-2 cursor-pointer"
             onClick={() => setCurrentView('dashboard')}
@@ -527,25 +581,25 @@ function MainApp() {
                 onClick={() => setCurrentView('dashboard')}
                 className={`text-sm font-bold transition-colors ${currentView === 'dashboard' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
               >
-                Dashboard
+                {t.nav.dashboard}
               </button>
               <button
                 onClick={() => setCurrentView('decks')}
                 className={`text-sm font-bold transition-colors ${currentView === 'decks' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
               >
-                Decks
+                {t.nav.decks}
               </button>
               <button
                 onClick={() => setCurrentView('analytics')}
                 className={`text-sm font-bold transition-colors ${currentView === 'analytics' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
               >
-                Analytics
+                {t.nav.analytics}
               </button>
               <button
                 onClick={() => setCurrentView('settings')}
                 className={`text-sm font-bold transition-colors ${currentView === 'settings' ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`}
               >
-                Settings
+                {t.nav.settings}
               </button>
             </nav>
 
@@ -584,7 +638,7 @@ function MainApp() {
         </div>
       </header>
       
-      <main className="max-w-5xl mx-auto p-6 py-10">
+      <main className="max-w-7xl mx-auto p-6 py-10">
         {renderView()}
       </main>
     </div>
